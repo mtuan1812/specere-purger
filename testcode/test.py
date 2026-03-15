@@ -273,6 +273,7 @@ def check_and_alarm(lox: dict, sfm: dict, sht: dict):
 
     return len(alarms) == 0   # True = all clear
 
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     bus = smbus2.SMBus(I2C_BUS)
