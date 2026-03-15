@@ -12,8 +12,6 @@ import struct
 import serial
 import smbus2
 import sys
-import time
-import RPi.GPIO as GPIO
 
 
 # ── Thresholds for "sanity check" alarms ──────────────────────────────────────
@@ -26,28 +24,15 @@ SENSOR_FAIL_LIMIT    = 3       # consecutive failures before blocking
 
 _fail_counts = {"lox": 0, "sfm": 0, "sht": 0}
 
-
-# ── GPIO ─────────────────────────────────────────────────────────────────────
-def gpio_setup():
-    """Configure IRQ_PIN as input with pull-up (SFM4300 IRQn is active-low)."""
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
-    GPIO.setup(IRQ_PIN, GPIO.IN)
-
-def gpio_cleanup():
-    GPIO.cleanup()
-
-
 # ── Config ────────────────────────────────────────────────────────────────────
-UART_PORT    = "/dev/ttyAMA5"
+UART_PORT    = "/dev/ttyAMA3"
 UART_BAUD    = 9600
 I2C_BUS      = 1
 
 SFM4300_ADDR = 0x2A   # ADDR pin floating or GND
 SHT45_ADDR   = 0x44
-IRQ_PIN = 22   # BCM numbering for SFM IRQn
 
-POLL_HZ      = 2      # terminal print rate
+POLL_HZ      = 1      # terminal print rate
 
 # ── CRC-8 (shared by both Sensirion sensors) ──────────────────────────────────
 def sensirion_crc(data: bytes) -> int:
@@ -72,7 +57,8 @@ SFM4300_CMD_START_AIR  = [0x36, 0x08]   # start continuous measurement, Air cal
 SFM4300_CMD_STOP       = [0x3F, 0xF9]
 SFM4300_SCALE          = 2500.0
 SFM4300_OFFSET         = -28672.0
-IRQ_TIMEOUT_MS = 200   # datasheet says first reading ready in ~12ms, 200ms is generous
+SFM4300_WARMUP_S       = 0.05    # datasheet: first reading ready ~12ms; 50ms is safe
+SFM4300_POLL_S         = 0.10    # inter-read delay when sensor is running
 
 _sfm_started = False
 
@@ -81,12 +67,7 @@ def sfm4300_start(bus: smbus2.SMBus):
     if not _sfm_started:
         bus.write_i2c_block_data(SFM4300_ADDR, SFM4300_CMD_START_AIR[0],
                                  SFM4300_CMD_START_AIR[1:])
-        # Wait for IRQn to go HIGH first (sensor acknowledges command)
-        # then we know subsequent falling edges are genuine data-ready signals
-        settled = GPIO.wait_for_edge(IRQ_PIN, GPIO.RISING, timeout=100)
-        if settled is None:
-            raise RuntimeError("SFM4300 did not acknowledge start command (IRQn never rose)")
-        time.sleep(0.03)   # remaining warm-up to 30ms
+        time.sleep(SFM4300_WARMUP_S)   # wait for first measurement to be ready
         _sfm_started = True
 
 def sfm4300_read(bus: smbus2.SMBus) -> dict:
@@ -96,13 +77,7 @@ def sfm4300_read(bus: smbus2.SMBus) -> dict:
     """
     try:
         sfm4300_start(bus)
-        # Wait for IRQn falling edge (sensor signals data ready)
-        edge = GPIO.wait_for_edge(IRQ_PIN, GPIO.FALLING, timeout=IRQ_TIMEOUT_MS)
-
-        if edge is None:
-            return {"error": f"IRQn timeout after {IRQ_TIMEOUT_MS}ms — no data ready signal"}
-
-        # Edge received — safe to read
+        time.sleep(SFM4300_POLL_S)   # fixed-period polling — wire IRQn later for tighter timing
         raw = bus.read_i2c_block_data(SFM4300_ADDR, 0x00, 9)
 
         # flow
@@ -303,7 +278,6 @@ def check_and_alarm(lox: dict, sfm: dict, sht: dict):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
-    gpio_setup()
     bus = smbus2.SMBus(I2C_BUS)
     ser = serial.Serial(
         port=UART_PORT,
@@ -339,7 +313,6 @@ def main():
             pass
         bus.close()
         ser.close()
-        gpio_cleanup()
 
 if __name__ == "__main__":
     main()
