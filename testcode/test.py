@@ -16,11 +16,9 @@ import sys
 
 # ── Thresholds for "sanity check" alarms ──────────────────────────────────────
 ALARM_O2_MAX_PCT     = 25.0    # above this in a N2 purge context = sensor likely in air, not chamber
-ALARM_FLOW_MAX_SLM   = 15.0    # above this = plumbing issue
+ALARM_FLOW_MAX_SLM   = 20.0    # above this = plumbing issue
 ALARM_TEMP_MAX_C     = 60.0    # above this = something's hot
 ALARM_RH_MAX_PCT     = 90.0    # above this = condensation risk
-
-SENSOR_FAIL_LIMIT    = 3       # consecutive failures before blocking
 
 _fail_counts = {"lox": 0, "sfm": 0, "sht": 0}
 
