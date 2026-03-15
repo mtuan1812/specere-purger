@@ -27,6 +27,17 @@ SENSOR_FAIL_LIMIT    = 3       # consecutive failures before blocking
 _fail_counts = {"lox": 0, "sfm": 0, "sht": 0}
 
 
+# ── GPIO ─────────────────────────────────────────────────────────────────────
+def gpio_setup():
+    """Configure IRQ_PIN as input with pull-up (SFM4300 IRQn is active-low)."""
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(IRQ_PIN, GPIO.IN)
+
+def gpio_cleanup():
+    GPIO.cleanup()
+
+
 # ── Config ────────────────────────────────────────────────────────────────────
 UART_PORT    = "/dev/ttyAMA5"
 UART_BAUD    = 9600
@@ -279,15 +290,14 @@ def check_and_alarm(lox: dict, sfm: dict, sht: dict):
     for alarm in alarms:
         print(f"\033[91m  *** ALARM: {alarm} ***\033[0m", file=sys.stderr)
 
-    # ── Hard block on repeated comm failures ──────────────────────────────────
+    # ── Warn loudly on repeated comm failures (keep running) ──────────────────
     for name, count in _fail_counts.items():
         if count >= SENSOR_FAIL_LIMIT:
             print(
-                f"\n\033[91m[FATAL] {name.upper()} failed {count} times in a row. "
-                f"Check wiring / address / UART. Halting.\033[0m",
+                f"\033[91m  *** [{name.upper()} DEAD x{count}] "
+                f"Repeated failures — check wiring/address/UART. Continuing... ***\033[0m",
                 file=sys.stderr
             )
-            raise SystemExit(1)
 
     return len(alarms) == 0   # True = all clear
 
@@ -295,7 +305,14 @@ def check_and_alarm(lox: dict, sfm: dict, sht: dict):
 def main():
     gpio_setup()
     bus = smbus2.SMBus(I2C_BUS)
-    ser = serial.Serial(...)
+    ser = serial.Serial(
+        port=UART_PORT,
+        baudrate=UART_BAUD,
+        bytesize=serial.EIGHTBITS,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        timeout=1,
+    )
 
     ser.write(b"M 0\r\n")
     time.sleep(0.5)
