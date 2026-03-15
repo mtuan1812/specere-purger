@@ -209,6 +209,7 @@ def print_readings(lox: dict, sfm: dict, sht: dict):
         lox_line = (
             f"  O2:    {lox.get('o2_pct', '---'):>7.2f} %   "
             f"ppO2: {lox.get('ppo2_mbar', '---'):>7.1f} mbar   "
+            f"P: {lox.get('pressure_mbar', '---'):>6.0f} mbar   "
             f"T: {lox.get('temp_c', '---'):>6.1f} °C   [{status_flag}]"
         )
 
