@@ -77,8 +77,12 @@ def sfm4300_read(bus: smbus2.SMBus) -> dict:
     """
     try:
         sfm4300_start(bus)
-        time.sleep(SFM4300_POLL_S)   # fixed-period polling — wire IRQn later for tighter timing
-        raw = bus.read_i2c_block_data(SFM4300_ADDR, 0x00, 9)
+        time.sleep(SFM4300_POLL_S)   # fixed-period polling
+        
+        # Raw I2C read (no register address byte sent)
+        msg = smbus2.i2c_msg.read(SFM4300_ADDR, 9)
+        bus.i2c_rdwr(msg)
+        raw = list(msg)
 
         # flow
         if not check_crc(bytes(raw[0:2]), raw[2]):
@@ -116,7 +120,10 @@ def sht45_read(bus: smbus2.SMBus) -> dict:
         bus.write_byte(SHT45_ADDR, SHT45_CMD_MEASURE_HIGH)
         time.sleep(0.01)   # 8.3ms max measurement time
 
-        raw = bus.read_i2c_block_data(SHT45_ADDR, 0x00, 6)
+        # Raw I2C read (no register address byte sent)
+        msg = smbus2.i2c_msg.read(SHT45_ADDR, 6)
+        bus.i2c_rdwr(msg)
+        raw = list(msg)
 
         if not check_crc(bytes(raw[0:2]), raw[2]):
             return {"error": "temp CRC fail"}
@@ -213,7 +220,7 @@ def print_readings(lox: dict, sfm: dict, sht: dict):
     else:
         sfm_line = (
             f"  Flow:  {sfm.get('flow_slm', '---'):>7.3f} slm  "
-            f"T(sensor): {sfm.get('temp_c', '---'):>6.1f} °C   "
+            f"T(FM): {sfm.get('temp_c', '---'):>6.1f} °C   "
             f"status: {sfm.get('status', '?')}"
         )
 
@@ -264,15 +271,6 @@ def check_and_alarm(lox: dict, sfm: dict, sht: dict):
     # ── Print alarms loud ─────────────────────────────────────────────────────
     for alarm in alarms:
         print(f"\033[91m  *** ALARM: {alarm} ***\033[0m", file=sys.stderr)
-
-    # ── Warn loudly on repeated comm failures (keep running) ──────────────────
-    for name, count in _fail_counts.items():
-        if count >= SENSOR_FAIL_LIMIT:
-            print(
-                f"\033[91m  *** [{name.upper()} DEAD x{count}] "
-                f"Repeated failures — check wiring/address/UART. Continuing... ***\033[0m",
-                file=sys.stderr
-            )
 
     return len(alarms) == 0   # True = all clear
 
