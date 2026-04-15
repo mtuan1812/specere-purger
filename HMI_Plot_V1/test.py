@@ -63,6 +63,14 @@ _sfm_started = False
 def sfm4300_start(bus: smbus2.SMBus):
     global _sfm_started
     if not _sfm_started:
+        # Robustness: explicitly stop any previous measurement just in case
+        try:
+            bus.write_i2c_block_data(SFM4300_ADDR, SFM4300_CMD_STOP[0],
+                                     SFM4300_CMD_STOP[1:])
+            time.sleep(0.05)
+        except Exception:
+            pass
+
         bus.write_i2c_block_data(SFM4300_ADDR, SFM4300_CMD_START_AIR[0],
                                  SFM4300_CMD_START_AIR[1:])
         time.sleep(SFM4300_WARMUP_S)   # wait for first measurement to be ready
