@@ -7,7 +7,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#dcdcdc;color:#111;font-family:Arial,Helvetica,sans-serif}
 body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;user-select:none}
-#app{width:800px;height:480px;padding:4px;background:var(--bg);display:grid;grid-template-rows:84px 1fr 58px;gap:6px}
+#app{width:800px;height:480px;padding:4px;background:var(--bg);display:grid;grid-template-rows:84px 1fr;gap:6px}
 .topbar{display:grid;grid-template-columns:300px 190px 290px;align-items:center;gap:6px}
 .modeTabs{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--line);background:#fff;height:84px}
 .modeTab{display:flex;align-items:center;justify-content:center;font-size:30px;border-right:2px solid var(--line);background:#fff;cursor:pointer}
@@ -22,7 +22,7 @@ body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;
 .iconBtn svg{width:100%;height:100%;stroke:#111;fill:none;stroke-width:2.2}
 .iconBtn.estop svg{stroke:var(--status-red)} .iconBtn.locked svg{stroke:#8b6c2c} .iconBtn.dim svg{stroke:#444}
 .main{display:grid;grid-template-columns:535px 249px;gap:8px;min-height:0}
-.leftPanel{display:grid;grid-template-rows:150px 176px;gap:10px;width:535px}
+.leftPanel{display:grid;grid-template-rows:150px 166px 50px;gap:8px;width:535px}
 .controlArea{display:grid;grid-template-columns:202px 182px 131px;gap:10px}
 .setBox,.startStopWrap,.pathBox,.manualBtn{border:2px solid var(--line);background:#f7f7f7}
 .setBox{display:grid;grid-template-rows:58px 1fr}
@@ -45,16 +45,19 @@ body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;
 .dioWrap{width:100%;display:flex;gap:8px;justify-content:center;margin-top:-4px}
 .dio{width:32px;height:32px;border:2px solid var(--line);background:#f7f7f7;font-size:18px;display:flex;align-items:center;justify-content:center}
 .dio.on{background:var(--light-blue)} .dio.warn{background:#f6d365} .dio.stop{background:#fca5a5}
-.rightPanel{display:grid;grid-template-rows:48px 48px 1fr 52px;gap:6px;width:249px;min-width:249px}
+.rightPanel{display:grid;grid-template-rows:40px 40px 1fr 50px;gap:8px;width:249px;min-width:249px}
 .metricTabs,.rangeTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
 .metricTab,.rangeTab{border:none;background:var(--gray-2);font-size:17px;cursor:pointer;min-width:0}
 .metricTab.active,.rangeTab.active{background:var(--gold);color:#fff;font-weight:700}
-.chartCard{position:relative;overflow:hidden}
-.chartInner{width:100%;height:100%;background:#f3f3f3;border:1px solid #ddd}
+.chartCard{position:relative;overflow:visible}
+.chartInner{width:100%;height:100%;background:#f3f3f3;border:1px solid #ddd;overflow:hidden}
+.chartCard.fullscreen{position:fixed;top:20px;left:20px;right:20px;bottom:20px;z-index:90;border:4px solid var(--line);box-shadow:0 15px 50px rgba(0,0,0,0.6);background:#fff}
+.closeChartBtn{display:none}
+.chartCard.fullscreen .closeChartBtn{display:flex;align-items:center;justify-content:center;position:absolute;top:-18px;right:-18px;width:48px;height:48px;background:var(--red);color:#fff;border:3px solid var(--line);border-radius:50%;font-size:32px;font-weight:700;cursor:pointer;z-index:100;line-height:0;padding-bottom:4px}
 #chartCanvas{width:100%;height:100%;display:block}
 .dummyOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .dummyLabel{padding:10px 28px;border:2px solid var(--line);background:#f7f7f7;font-size:24px}
-.bottomBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bottomBtns{display:grid;grid-template-columns:1fr;gap:10px}
 .bottomBtn{border:2px solid var(--line);background:var(--gold);color:#fff;font-size:17px;cursor:pointer;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .statusBar{border:2px solid var(--line);background:#f7f7f7;display:grid;grid-template-columns:1fr auto;align-items:center;padding:0 18px;font-size:20px;cursor:pointer}
 .statusBar.fault{color:var(--status-red);border-color:var(--status-red)}

@@ -66,6 +66,13 @@
             </div>
           </div>
         </div>
+        <button id="statusBar" class="statusBar" type="button">
+          <div class="statusMeta">
+            <div id="statusTime">--</div>
+            <div id="lastSeenText" class="lastSeen">Data last seen: --</div>
+          </div>
+          <div id="statusText" class="statusText">System Normal ↗</div>
+        </button>
       </div>
 
       <div class="rightPanel">
@@ -81,24 +88,20 @@
           <button class="rangeTab" data-range="10800">3hr</button>
           <button class="rangeTab" data-range="86400">24hr</button>
         </div>
-        <div class="chartCard">
-          <canvas id="chartCanvas" class="chartInner"></canvas>
-          <div id="dummyOverlay" class="dummyOverlay hidden"><div class="dummyLabel">Dummy data</div></div>
+        <div id="chartCard" class="chartCard">
+          <div class="chartInner">
+            <canvas id="chartCanvas"></canvas>
+          </div>
+          <button id="closeChartBtn" class="closeChartBtn">&times;</button>
+          <div id="dummyOverlay" class="dummyOverlay hidden">
+            <div class="dummyLabel">System Normal ↗</div>
+          </div>
         </div>
         <div class="bottomBtns">
-          <button id="exportBtn" class="bottomBtn">Export graph</button>
           <button id="csvBtn" class="bottomBtn">CSV URL ↗</button>
         </div>
       </div>
     </div>
-
-    <button id="statusBar" class="statusBar" type="button">
-      <div class="statusMeta">
-        <div id="statusTime">--</div>
-        <div id="lastSeenText" class="lastSeen">Data last seen: --</div>
-      </div>
-      <div id="statusText" class="statusText">System Normal ↗</div>
-    </button>
   </div>
 
   <div id="consoleModal" class="modalBack hidden">

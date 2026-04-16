@@ -113,6 +113,8 @@ class RuntimeState:
         now = time.time()
         with self.lock:
             self.state.metrics = result.telemetry
+            if self.state.metrics.temp_c is not None: self.state.metrics.temp_c = round(self.state.metrics.temp_c, 2)
+            if self.state.metrics.rh_pct is not None: self.state.metrics.rh_pct = round(self.state.metrics.rh_pct, 2)
             if result.telemetry.has_any_value():
                 self._last_seen_epoch = now
             self.state.connected = self.sensor_backend.is_connected
