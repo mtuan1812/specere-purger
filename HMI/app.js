@@ -178,7 +178,7 @@ function drawChart(history) {
 }
 
 async function refreshState() {
-    const res = await fetch(STATE_URL, { cache: "no-store" });
+    const res = await fetch(`${STATE_URL}?range=${state.rangeSec}`, { cache: "no-store" });
     const data = await res.json();
     state.latest = data;
     

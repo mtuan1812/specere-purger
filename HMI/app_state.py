@@ -18,6 +18,7 @@ class RuntimeState:
         self._csv_folder = os.path.join(BASE_DIR, "telemetry")
         os.makedirs(self._csv_folder, exist_ok=True)
         self._current_date_str = None
+        self._csv_buffer = []
         self.sensor_backend = create_sensor_backend(self.state.valves, self.log)
         self._lan_ip = self._get_lan_ip()
 
@@ -66,8 +67,26 @@ class RuntimeState:
                     csv.writer(f).writerow(["timestamp_iso","epoch_s","o2_pct","flow_slm","pressure_mbar","ppo2_mbar","temp_c","rh_pct","purge_valve","steady_valve","mode","auto_running","fault","estop"])
                     
         m = self.state.metrics
-        with open(path, "a", newline="", encoding="utf-8") as f:
-            csv.writer(f).writerow([dt.isoformat(sep=" ", timespec="seconds"), int(now), m.o2_pct, m.flow_slm, m.pressure_mbar, m.ppo2, m.temp_c, m.rh_pct, int(self.state.valves.purge), int(self.state.valves.steady), self.state.mode, int(self.state.auto_running), int(self.state.fault), int(self.state.estop)])
+        row = [dt.isoformat(sep=" ", timespec="seconds"), int(now), m.o2_pct, m.flow_slm, m.pressure_mbar, m.ppo2, m.temp_c, m.rh_pct, int(self.state.valves.purge), int(self.state.valves.steady), self.state.mode, int(self.state.auto_running), int(self.state.fault), int(self.state.estop)]
+        self._csv_buffer.append((path, row))
+        
+        if len(self._csv_buffer) >= 120:
+            self._flush_csv_buffer()
+
+    def _flush_csv_buffer(self):
+        if not self._csv_buffer: return
+        by_path = {}
+        for p, r in self._csv_buffer:
+            by_path.setdefault(p, []).append(r)
+            
+        for p, rows in by_path.items():
+            try:
+                with open(p, "a", newline="", encoding="utf-8") as f:
+                    csv.writer(f).writerows(rows)
+            except Exception as e:
+                self.log(f"Error flushing to CSV: {e}")
+                
+        self._csv_buffer.clear()
 
     @staticmethod
     def _format_timestamp_now():
@@ -141,6 +160,7 @@ class RuntimeState:
 
     def shutdown(self):
         self.log("Shutting down runtime")
+        self._flush_csv_buffer()
         self.sensor_backend.shutdown(self.log)
 
     def handle_command(self, action, data):
@@ -179,10 +199,10 @@ class RuntimeState:
             self._refresh_status_strings()
             self.state.console_text = "\n".join(self.console_lines[-120:])
 
-    def snapshot_dict(self, host=None):
+    def snapshot_dict(self, host=None, range_sec=1200):
         with self.lock:
             self.state.csv_url = f"http://{self._lan_ip}:8000/telemetry/"
             self.state.console_text = "\n".join(self.console_lines[-120:])
             self.state.sensor_backend = self.sensor_backend.backend_name
             self.state.connected = self.sensor_backend.is_connected
-            return self.state.to_api_dict()
+            return self.state.to_api_dict(range_sec)

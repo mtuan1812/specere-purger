@@ -29,7 +29,12 @@ def make_handler(runtime):
             parsed = urlparse(self.path); path = parsed.path
             if path == "/api/state":
                 host = self.headers.get("Host", "localhost:8000")
-                self._send(200, json.dumps(runtime.snapshot_dict(host)), "application/json"); return
+                qs = parse_qs(parsed.query)
+                range_sec = 1200
+                if "range" in qs:
+                    try: range_sec = int(qs["range"][0])
+                    except ValueError: pass
+                self._send(200, json.dumps(runtime.snapshot_dict(host, range_sec)), "application/json"); return
             if path == "/api/qr.png":
                 qs = parse_qs(parsed.query); url = unquote(qs.get("url", ["http://localhost:8000/telemetry.csv"])[0])
                 self._send(200, self.render_url_card(url), "image/png"); return

@@ -1,6 +1,7 @@
 
 from dataclasses import asdict, dataclass, field
 from typing import Dict, List, Optional
+import time
 
 @dataclass
 class TelemetryData:
@@ -61,7 +62,15 @@ class UiState:
     csv_url: str = ""
     sensor_backend: str = "sim"
 
-    def to_api_dict(self) -> Dict[str, object]:
+    def to_api_dict(self, range_sec: int = 1200) -> Dict[str, object]:
+        now = time.time()
+        cutoff = now - range_sec
+        recent = [p for p in self.history if p.ts >= cutoff]
+        
+        if len(recent) > 1000:
+            step = len(recent) // 500
+            recent = recent[::step]
+            
         return {
             "mode": self.mode,
             "auto_running": self.auto_running,
@@ -78,7 +87,7 @@ class UiState:
             "last_seen_str": self.last_seen_str,
             "system_status": self.system_status,
             "metrics": self.metrics.to_dict(),
-            "history": [point.to_dict() for point in self.history],
+            "history": [point.to_dict() for point in recent],
             "console_text": self.console_text,
             "csv_url": self.csv_url,
             "sensor_backend": self.sensor_backend,
