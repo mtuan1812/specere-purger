@@ -60,6 +60,9 @@ def make_handler(runtime):
                 elif local.endswith(".js"): ctype = "application/javascript; charset=utf-8"
                 elif local.endswith(".png"): ctype = "image/png"
                 elif local.endswith(".csv"): ctype = "text/csv; charset=utf-8"
+                elif local.endswith(".ttf"): ctype = "font/ttf"
+                elif local.endswith(".woff"): ctype = "font/woff"
+                elif local.endswith(".woff2"): ctype = "font/woff2"
                 with open(local, "rb") as f: self._send(200, f.read(), ctype); return
             self._send(404, "Not found")
 
