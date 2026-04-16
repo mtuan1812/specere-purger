@@ -1,4 +1,4 @@
-@font-face { font-family: 'SF Pro'; src: url('SF-Pro.woff2') format('woff2'); font-weight: normal; font-style: normal; }
+@font-face { font-family: 'SF Pro'; src: local('SF Pro Display'), local('SF Pro Text'), local('.SF UI Text'), local('San Francisco'), url('SF-Pro.woff2') format('woff2'); font-weight: normal; font-style: normal; }
 :root{
   --bg:#f2f2f2; --line:#1d1d1d; --gold:#9b7b3b; --light-blue:#a9c7e5;
   --yellow:#fff200; --red:#ff140a; --green:#15a34a; --gray-2:#c7ccd3;
