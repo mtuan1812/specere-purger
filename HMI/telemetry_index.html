@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Telemetry Logs</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <style>
+        body { font-family: sans-serif; margin: 2rem; background: #f4f4f9; }
+        ul { list-style: none; padding: 0; background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); overflow: hidden; }
+        li { border-bottom: 1px solid #eee; }
+        li:last-child { border-bottom: none; }
+        a { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; text-decoration: none; color: #1a73e8; font-size: 18px; }
+        a:hover { background: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <h2 style='color:#333; margin-bottom:20px;'>Telemetry CSV Logs</h2>
+    <ul>
+        {{FILE_LIST}}
+    </ul>
+</body>
+</html>

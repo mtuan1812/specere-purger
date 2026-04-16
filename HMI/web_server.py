@@ -40,17 +40,23 @@ def make_handler(runtime):
                 tel_dir = os.path.join(BASE_DIR, "telemetry")
                 os.makedirs(tel_dir, exist_ok=True)
                 files = sorted([f for f in os.listdir(tel_dir) if f.endswith(".csv")], reverse=True)
-                html = ["<!DOCTYPE html><html><head><title>Telemetry Logs</title>"]
-                html.append("<meta name='viewport' content='width=device-width, initial-scale=1'>")
-                html.append("<style>body{font-family:sans-serif; margin:2rem; background:#f4f4f9;} ul{list-style:none; padding:0; background:#fff; border-radius:8px; box-shadow:0 2px 12px rgba(0,0,0,0.1); overflow:hidden;} li{border-bottom:1px solid #eee;} li:last-child{border-bottom:none;} a{display:flex; justify-content:space-between; align-items:center; padding:16px 20px; text-decoration:none; color:#1a73e8; font-size:18px;} a:hover{background:#f8f9fa;}</style>")
-                html.append("</head><body><h2 style='color:#333; margin-bottom:20px;'>Telemetry CSV Logs</h2><ul>")
+                li_elements = []
                 for f in files:
                     try: size_kb = os.path.getsize(os.path.join(tel_dir, f)) / 1024
                     except OSError: size_kb = 0
-                    html.append(f"<li><a href='/telemetry/{f}'><span>📄 {f}</span><span style='color:#777; font-size:14px; font-weight:normal;'>{size_kb:.1f} KB</span></a></li>")
-                if not files: html.append("<li style='padding:20px; color:#666; text-align:center;'>No logs found.</li>")
-                html.append("</ul></body></html>")
-                self._send(200, "".join(html), "text/html; charset=utf-8"); return
+                    li_elements.append(f"<li><a href='/telemetry/{f}'><span>📄 {f}</span><span style='color:#777; font-size:14px; font-weight:normal;'>{size_kb:.1f} KB</span></a></li>")
+                if not files: 
+                    li_elements.append("<li style='padding:20px; color:#666; text-align:center;'>No logs found.</li>")
+                
+                template_path = os.path.join(BASE_DIR, "telemetry_index.html")
+                try:
+                    with open(template_path, "r", encoding="utf-8") as f:
+                        template = f.read()
+                except FileNotFoundError:
+                    template = "<html><body><ul>{{FILE_LIST}}</ul></body></html>"
+                
+                html = template.replace("{{FILE_LIST}}", "".join(li_elements))
+                self._send(200, html.encode('utf-8'), "text/html; charset=utf-8"); return
             if path == "/": path = "/index.html"
             local = os.path.join(BASE_DIR, path.lstrip("/"))
             if os.path.isfile(local):

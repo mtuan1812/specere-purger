@@ -19,6 +19,18 @@ class RuntimeState:
         os.makedirs(self._csv_folder, exist_ok=True)
         self._current_date_str = None
         self.sensor_backend = create_sensor_backend(self.state.valves, self.log)
+        self._lan_ip = self._get_lan_ip()
+
+    def _get_lan_ip(self):
+        import socket
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except Exception:
+            return "127.0.0.1"
 
     def log(self, text):
         stamp = datetime.now().strftime("%m/%d/%y %I:%M:%S %p")
@@ -169,17 +181,7 @@ class RuntimeState:
 
     def snapshot_dict(self, host=None):
         with self.lock:
-            # Sniff the physical network interface LAN IP rather than trusting the localhost header from the local Chromium instance
-            import socket
-            lan_ip = "127.0.0.1"
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                s.connect(('8.8.8.8', 80))
-                lan_ip = s.getsockname()[0]
-                s.close()
-            except Exception: pass
-            
-            self.state.csv_url = f"http://{lan_ip}:8000/telemetry/"
+            self.state.csv_url = f"http://{self._lan_ip}:8000/telemetry/"
             self.state.console_text = "\n".join(self.console_lines[-120:])
             self.state.sensor_backend = self.sensor_backend.backend_name
             self.state.connected = self.sensor_backend.is_connected
