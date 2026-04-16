@@ -5,7 +5,6 @@ from urllib.parse import parse_qs, urlparse, unquote
 from PIL import Image, ImageDraw
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(BASE_DIR, "telemetry.csv")
 
 class PollThread(threading.Thread):
     daemon = True
@@ -31,8 +30,6 @@ def make_handler(runtime):
             if path == "/api/state":
                 host = self.headers.get("Host", "localhost:8000")
                 self._send(200, json.dumps(runtime.snapshot_dict(host)), "application/json"); return
-            if path == "/telemetry.csv":
-                with open(CSV_PATH, "rb") as f: self._send(200, f.read(), "text/csv; charset=utf-8"); return
             if path == "/api/qr.png":
                 qs = parse_qs(parsed.query); url = unquote(qs.get("url", ["http://localhost:8000/telemetry.csv"])[0])
                 self._send(200, self.render_url_card(url), "image/png"); return
@@ -47,6 +44,7 @@ def make_handler(runtime):
                 elif local.endswith(".css"): ctype = "text/css; charset=utf-8"
                 elif local.endswith(".js"): ctype = "application/javascript; charset=utf-8"
                 elif local.endswith(".png"): ctype = "image/png"
+                elif local.endswith(".csv"): ctype = "text/csv; charset=utf-8"
                 with open(local, "rb") as f: self._send(200, f.read(), ctype); return
             self._send(404, "Not found")
 
