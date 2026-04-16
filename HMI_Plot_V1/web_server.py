@@ -75,31 +75,34 @@ def make_handler(runtime):
             self._send(200, json.dumps(runtime.snapshot_dict(host)), "application/json")
 
         def render_url_card(self, url):
+            import qrcode
+            qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=2)
+            qr.add_data(url)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            
             width, height = 520, 520
             img = Image.new("RGB", (width, height), "white")
             draw = ImageDraw.Draw(img)
             draw.rounded_rectangle([12, 12, width - 12, height - 12], radius=18, outline="black", width=3)
-            draw.text((30, 28), "Local CSV URL", fill="black")
-            qr_x, qr_y, qr_size = 110, 80, 300
-            draw.rectangle([qr_x, qr_y, qr_x + qr_size, qr_y + qr_size], outline="black", width=3)
-            cell = 12; seed = sum(ord(ch) for ch in url)
-            for row in range(21):
-                for col in range(21):
-                    value = (seed + row * 37 + col * 19 + (row * col)) % 7
-                    if value in (0, 1, 3):
-                        x1 = qr_x + 20 + col * cell; y1 = qr_y + 20 + row * cell; x2 = x1 + cell - 2; y2 = y1 + cell - 2
-                        if x2 < qr_x + qr_size - 20 and y2 < qr_y + qr_size - 20: draw.rectangle([x1, y1, x2, y2], fill="black")
-            wrapped=[]; line=""
-            for part in url.split("/"):
-                candidate = part if not line else line + "/" + part
-                if len(candidate) > 34:
-                    if line: wrapped.append(line)
-                    line = part
-                else: line = candidate
-            if line: wrapped.append(line)
-            y = 405
-            for line in wrapped[:4]:
-                draw.text((28, y), line, fill="black"); y += 24
+            
+            # Center the QR
+            qr_w, qr_h = qr_img.size
+            if qr_w > 400: qr_img = qr_img.resize((400, 400), Image.Resampling.NEAREST)
+            qr_w, qr_h = qr_img.size
+            
+            x_offset = (width - qr_w) // 2
+            y_offset = (height - qr_h) // 2 - 20
+            img.paste(qr_img, (x_offset, y_offset))
+            
+            # Draw URL perfectly centered at bottom
+            text_y = y_offset + qr_h + 30
+            # Simple centering logic
+            url_len = len(url)
+            char_w = 7 # approximate monospace
+            x_text = max(20, (width - url_len * char_w) // 2)
+            draw.text((x_text, text_y), url, fill="#444")
+            
             buffer = io.BytesIO(); img.save(buffer, format="PNG"); return buffer.getvalue()
 
         def render_plot(self, metric, range_sec):
