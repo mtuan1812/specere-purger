@@ -69,7 +69,7 @@ class TestPySensorBackend(SensorBackend):
             bytesize=self.test_mod.serial.EIGHTBITS,
             parity=self.test_mod.serial.PARITY_NONE,
             stopbits=self.test_mod.serial.STOPBITS_ONE,
-            timeout=1,
+            timeout=2.1,
         )
         self.ser.write(b"M 0\r\n")
         time.sleep(0.5)

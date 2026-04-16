@@ -188,9 +188,13 @@ def luminox_parse_stream(line: str) -> dict:
 def luminox_read_line(ser: serial.Serial) -> dict:
     """Read one complete line from LuminOx. Returns parsed dict or error."""
     try:
-        raw = ser.readline().decode("ascii", errors="replace").strip()
-        if not raw:
+        raw_bytes = ser.readline()
+        if not raw_bytes:
             return {"error": "timeout / no data"}
+        if not raw_bytes.endswith(b'\n'):
+            return {"error": "stale value / no newline detected within timeout"}
+            
+        raw = raw_bytes.decode("ascii", errors="replace").strip()
         if raw.startswith("E "):
             return {"error": f"sensor error: {raw}"}
         return luminox_parse_stream(raw)
@@ -291,7 +295,7 @@ def main():
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
-        timeout=1,
+        timeout=2.1,
     )
 
     ser.write(b"M 0\r\n")
