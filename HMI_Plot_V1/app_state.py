@@ -167,12 +167,19 @@ class RuntimeState:
             self._refresh_status_strings()
             self.state.console_text = "\n".join(self.console_lines[-120:])
 
-    def snapshot_dict(self, host):
+    def snapshot_dict(self, host=None):
         with self.lock:
-            if self._current_date_str:
-                self.state.csv_url = f"http://{host}/telemetry/{self._current_date_str}.csv"
-            else:
-                self.state.csv_url = f"http://{host}/telemetry.csv"
+            # Sniff the physical network interface LAN IP rather than trusting the localhost header from the local Chromium instance
+            import socket
+            lan_ip = "127.0.0.1"
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(('8.8.8.8', 80))
+                lan_ip = s.getsockname()[0]
+                s.close()
+            except Exception: pass
+            
+            self.state.csv_url = f"http://{lan_ip}:8000/telemetry/"
             self.state.console_text = "\n".join(self.console_lines[-120:])
             self.state.sensor_backend = self.sensor_backend.backend_name
             self.state.connected = self.sensor_backend.is_connected
