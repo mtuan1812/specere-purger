@@ -161,7 +161,7 @@ def luminox_parse_stream(line: str) -> dict:
     e.g. "O 0210.3 T +20.5 P 1013 % 020.90 e 0000"
     Returns dict with ppo2_mbar, temp_c, pressure_mbar, o2_pct, status
     """
-    result = {}
+    result = {"raw": line.strip()}
     try:
         parts = line.strip().split()
         # parts: ['O','0210.3','T','+20.5','P','1013','%','020.90','e','0000']

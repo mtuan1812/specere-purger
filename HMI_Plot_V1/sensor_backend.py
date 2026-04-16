@@ -94,10 +94,19 @@ class TestPySensorBackend(SensorBackend):
             if "error" in sfm: faults.append(f"SFM4300: {sfm['error']}")
             if "error" in sht: faults.append(f"SHT45: {sht['error']}")
             if "status_ok" in lox and not lox.get("status_ok", False): faults.append(f"LuminOx status {lox.get('status')}")
-            status_flag = "✓" if lox.get("status_ok") else (f"! {lox.get('status')}" if "status" in lox else "?")
-            log(f"O2: {telemetry.o2_pct if telemetry.o2_pct is not None else 'ERR'} %   ppO2: {telemetry.ppo2 if telemetry.ppo2 is not None else 'ERR'} mbar   P: {telemetry.pressure_mbar if telemetry.pressure_mbar is not None else 'ERR'} mbar   [{status_flag}]")
-            log(f"Flow: {telemetry.flow_slm if telemetry.flow_slm is not None else 'ERR'} slm")
-            log(f"Amb: T {telemetry.temp_c if telemetry.temp_c is not None else 'ERR'} C   RH {telemetry.rh_pct if telemetry.rh_pct is not None else 'ERR'} %")
+            def fmt(v, decimals): return f"{v:.{decimals}f}" if v is not None else "ERR"
+            
+            if "raw" in lox:
+                log(f"O2: {lox['raw']}")
+            else:
+                status_flag = "✓" if lox.get("status_ok") else (f"! {lox.get('status')}" if "status" in lox else "?")
+                log(f"O2: {fmt(telemetry.o2_pct, 2)} %   ppO2: {fmt(telemetry.ppo2, 1)} mbar   P: {fmt(telemetry.pressure_mbar, 1)} mbar   [{status_flag}]")
+
+            sfm_status = sfm.get('status', 'N/A')
+            log(f"Flow:   {fmt(telemetry.flow_slm, 4)} slm   T(FM):   {fmt(sfm.get('temp_c'), 1)} °C   status: {sfm_status}")
+
+            sht_status = "OK" if "error" not in sht else f"ERR ({sht['error']})"
+            log(f"SHT45: {sht_status}")
             return BackendReadResult(telemetry=telemetry, fault_messages=faults)
         except Exception as exc:
             self.connected = False
