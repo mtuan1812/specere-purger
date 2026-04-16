@@ -151,7 +151,7 @@ class RuntimeState:
             elif action == "toggle_estop":
                 self.log("Executing system shutdown script...")
                 import subprocess
-                subprocess.Popen(["sudo", "sh", "/home/admin/Git/specere-purger/HMI_Plot_V1/stop_hmi.sh"], start_new_session=True)
+                subprocess.Popen(["sudo", "sh", os.path.join(BASE_DIR, "stop_hmi.sh")], start_new_session=True)
             elif action == "reboot_system":
                 self.log("Rebooting Raspberry Pi...")
                 import subprocess
