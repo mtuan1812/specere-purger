@@ -123,19 +123,19 @@ class RuntimeState:
                     if valve == "purge": self.state.valves.purge = not self.state.valves.purge
                     elif valve == "steady": self.state.valves.steady = not self.state.valves.steady
             elif action == "toggle_estop":
-                self.state.estop = not self.state.estop
-                if self.state.estop:
-                    self.state.valves.all_off()
-                    self.log("E-stop activated")
-                else:
-                    self.log("E-stop cleared")
-            elif action == "reset_faults":
-                if not self.state.estop:
-                    self.state.fault = False
-                    self.state.fault_message = ""
-                self.log("Fault reset requested")
+                self.log("Executing system shutdown script...")
+                import subprocess
+                subprocess.Popen(["sudo", "sh", "/home/admin/Git/specere-purger/HMI_Plot_V1/stop_hmi.sh"], start_new_session=True)
+            elif action == "reboot_system":
+                self.log("Rebooting Raspberry Pi...")
+                import subprocess
+                subprocess.Popen(["sudo", "reboot"])
             elif action == "toggle_dim":
-                self.state.dimmed = not self.state.dimmed
+                self.log("Putting display to sleep (wake on touch)...")
+                import subprocess
+                # Allow xset to turn off the screen via DPMS. A touch event will automatically wake it.
+                subprocess.Popen(["sudo", "-u", "admin", "env", "DISPLAY=:0", "XAUTHORITY=/home/admin/.Xauthority", "xset", "+dpms"])
+                subprocess.Popen(["sudo", "-u", "admin", "env", "DISPLAY=:0", "XAUTHORITY=/home/admin/.Xauthority", "xset", "dpms", "force", "off"])
             elif action == "toggle_lock":
                 self.state.locked_controls = not self.state.locked_controls
             self._refresh_status_strings()
