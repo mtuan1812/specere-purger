@@ -8,7 +8,7 @@
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#dcdcdc;color:#111;font-family:'Acumin Pro',system-ui,-apple-system,sans-serif}
 body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;user-select:none}
 #app{width:800px;height:480px;padding:4px;background:var(--bg);display:grid;grid-template-rows:84px 1fr;gap:6px}
-.topbar{display:grid;grid-template-columns:300px 190px 290px;align-items:center;gap:6px}
+.topbar{display:grid;grid-template-columns:300px 1fr auto;align-items:center;gap:12px}
 .modeTabs{display:grid;grid-template-columns:1fr 1fr;border:2px solid var(--line);background:#fff;height:84px}
 .modeTab{display:flex;align-items:center;justify-content:center;font-size:30px;border-right:2px solid var(--line);background:#fff;cursor:pointer}
 .modeTab:last-child{border-right:none}
@@ -17,7 +17,7 @@ body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;
 .brandWrap img{width:108px;height:auto;object-fit:contain;display:block}
 .brandText{font-size:18px;line-height:1.08;text-align:left;white-space:normal}
 .brandFallback{font-size:28px;line-height:1}
-.iconRow{display:grid;grid-template-columns:repeat(4,1fr);align-items:center;gap:6px;height:84px}
+.iconRow{display:flex;align-items:center;justify-content:flex-end;gap:18px;height:84px;padding-right:12px}
 .iconBtn{width:48px;height:48px;border:none;background:transparent;padding:0;cursor:pointer;justify-self:center}
 .iconBtn svg{width:100%;height:100%;stroke:#111;fill:none;stroke-width:2.2}
 .iconBtn.estop svg{stroke:var(--status-red)} .iconBtn.locked svg{stroke:#8b6c2c} .iconBtn.dim svg{stroke:#444}
