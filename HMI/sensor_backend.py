@@ -96,14 +96,11 @@ class TestPySensorBackend(SensorBackend):
             if "status_ok" in lox and not lox.get("status_ok", False): faults.append(f"LuminOx status {lox.get('status')}")
             def fmt(v, decimals): return f"{v:.{decimals}f}" if v is not None else "ERR"
             
-            if "raw" in lox:
-                log(f"O2: {lox['raw']}")
-            else:
-                status_flag = "✓" if lox.get("status_ok") else (f"! {lox.get('status')}" if "status" in lox else "?")
-                log(f"O2: {fmt(telemetry.o2_pct, 2)} %   ppO2: {fmt(telemetry.ppo2, 1)} mbar   P: {fmt(telemetry.pressure_mbar, 1)} mbar   [{status_flag}]")
+            lox_status = lox.get('status', 'ERR')
+            log(f"O2 status: e {lox_status}")
 
             sfm_status = sfm.get('status', 'N/A')
-            log(f"Flow:   {fmt(telemetry.flow_slm, 4)} slm   T(FM):   {fmt(sfm.get('temp_c'), 1)} °C   status: {sfm_status}")
+            log(f"Flow status: {sfm_status}")
 
             sht_status = "OK" if "error" not in sht else f"ERR ({sht['error']})"
             log(f"SHT45: {sht_status}")
