@@ -1,11 +1,13 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
 :root{
   --bg:#f2f2f2; --line:#1d1d1d; --gold:#9b7b3b; --light-blue:#a9c7e5;
   --yellow:#fff200; --red:#ff140a; --green:#15a34a; --gray-2:#c7ccd3;
   --status-green:#0ca84f; --status-red:#d62828;
 }
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#dcdcdc;color:#111;font-family:Arial,Helvetica,sans-serif}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#dcdcdc;color:#111;font-family:'Inter',system-ui,-apple-system,sans-serif}
 body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;user-select:none}
 #app{width:800px;height:480px;padding:4px;background:var(--bg);display:grid;grid-template-rows:84px 1fr;gap:6px}
 .topbar{display:grid;grid-template-columns:300px 190px 290px;align-items:center;gap:6px}

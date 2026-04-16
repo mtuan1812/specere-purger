@@ -10,7 +10,7 @@ function applyPathUI(path){$("pathPurge").className="pathBtn"+(path==="purge"?" 
 function applyStartStop(running){$("startStopBtn").textContent=running?"STOP":"START";$("startStopBtn").classList.toggle("is-start",!running)}
 function applyStatusBar(fault,estop,ts,text,lastSeen){const red=!!fault||!!estop;$("statusBar").classList.toggle("fault",red);$("statusTime").textContent=ts||"--";$("statusText").textContent=text||(red?"System Fault ↗":"System Normal ↗");$("lastSeenText").textContent=`Data last seen: ${lastSeen||"--"}`}
 function updateDio(v,a,c,e){$("dio1").className="dio"+(v.purge?" on":"");$("dio2").className="dio"+(v.steady?" on":"");$("dio3").className="dio"+(a?" warn":"");$("dio4").className="dio"+(c&&!e?" on":(e?" stop":""))}
-function updateReadings(m){$("valO2").textContent=`${fmt(m.o2_pct,2)} %`;$("valFlow").textContent=`${fmt(m.flow_slm,2)} slm`;$("valPressure").textContent=`${fmt(m.pressure_mbar,2)} mbar`;$("valTemp").textContent=`${fmt(m.temp_c,2)} C`;$("valRh").textContent=`${fmt(m.rh_pct,2)} %`}
+function updateReadings(m){$("valO2").textContent=`${fmt(m.o2_pct,2)} %`;$("valFlow").textContent=`${fmt(m.flow_slm,2)} slm`;$("valPressure").textContent=`${fmt(m.pressure_mbar,2)} mbar`;$("valTemp").textContent=`${fmt(m.temp_c,2)} °C`;$("valRh").textContent=`${fmt(m.rh_pct,2)} %`}
 function openConsole(t){const el=$("consoleText");el.textContent=t||"";$("consoleModal").classList.remove("hidden");el.scrollTop=el.scrollHeight}
 function closeConsole(){$("consoleModal").classList.add("hidden")}
 function openQr(u){$("csvUrlText").textContent=u;$("qrImage").src=`/api/qr.png?url=${encodeURIComponent(u)}`;$("qrModal").classList.remove("hidden")}
