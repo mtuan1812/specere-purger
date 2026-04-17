@@ -19,7 +19,11 @@ class TelemetryData:
 
 @dataclass
 class ValveState:
-    """Logical state of the two controllable valves."""
+    """Logical state of the two controllable valves.
+
+    purge   -> assigned to GPIO27 / DIO0 / OUT0
+    steady  -> assigned to GPIO26 / DIO1 / OUT1
+    """
     purge: bool = False
     steady: bool = False
     def all_off(self) -> None:
