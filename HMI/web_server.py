@@ -6,16 +6,42 @@ from PIL import Image, ImageDraw
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-class PollThread(threading.Thread):
+class LuminOxThread(threading.Thread):
+    """Reads LuminOx via UART. Blocks on readline(), self-paces at ~1 Hz.
+    Also owns the control loop since auto-mode logic is O2-gated."""
     daemon = True
     def __init__(self, runtime):
         super().__init__()
         self.runtime = runtime
     def run(self):
         while True:
-            try: self.runtime.step()
-            except Exception as exc: self.runtime.log(f"Background loop error: {exc}")
-            time.sleep(1.0)
+            try:
+                self.runtime.step_lox()
+            except Exception as exc:
+                self.runtime.log(f"LuminOx thread error: {exc}")
+
+class I2CThread(threading.Thread):
+    """Reads SFM4300 at 5 Hz and SHT45 at 1 Hz on a deadline scheduler."""
+    _SFM_INTERVAL = 0.2   # 5 Hz
+    _SHT_EVERY_N  = 5     # read SHT45 every 5th SFM cycle → 1 Hz
+    daemon = True
+    def __init__(self, runtime):
+        super().__init__()
+        self.runtime = runtime
+    def run(self):
+        next_tick = time.monotonic()
+        cycle = 0
+        while True:
+            try:
+                self.runtime.step_i2c(read_sht=(cycle % self._SHT_EVERY_N == 0))
+            except Exception as exc:
+                self.runtime.log(f"I2C thread error: {exc}")
+            cycle += 1
+            next_tick += self._SFM_INTERVAL
+            sleep_for = next_tick - time.monotonic()
+            if sleep_for > 0:
+                time.sleep(sleep_for)
+            # If read took > 200 ms, skip sleep and catch up next cycle.
 
 def make_handler(runtime):
     class Handler(BaseHTTPRequestHandler):
@@ -146,6 +172,7 @@ def make_handler(runtime):
 
 def create_server(runtime):
     handler = make_handler(runtime)
-    poller = PollThread(runtime)
+    lox_thread = LuminOxThread(runtime)
+    i2c_thread = I2CThread(runtime)
     server = ThreadingHTTPServer(("0.0.0.0", 8000), handler)
-    return server, poller
+    return server, lox_thread, i2c_thread

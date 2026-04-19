@@ -83,7 +83,10 @@ def sfm4300_read(bus: smbus2.SMBus) -> dict:
     """
     try:
         sfm4300_start(bus)
-        time.sleep(SFM4300_POLL_S)   # fixed-period polling
+        # No sleep needed here: SFM4300 runs continuous measurement mode and
+        # the data register is always ready. The SFM4300_POLL_S sleep was
+        # appropriate in the standalone main() loop but wastes ~100 ms in the
+        # integrated read path driven by the poll thread.
         
         # Raw I2C read (no register address byte sent)
         msg = smbus2.i2c_msg.read(SFM4300_ADDR, 9)
@@ -186,8 +189,17 @@ def luminox_parse_stream(line: str) -> dict:
     return result
 
 def luminox_read_line(ser: serial.Serial) -> dict:
-    """Read one complete line from LuminOx. Returns parsed dict or error."""
+    """Read one complete line from LuminOx. Returns parsed dict or error.
+
+    Always flushes the OS receive buffer before blocking so we read the
+    freshest line the sensor is about to emit, not stale buffered lines.
+    Without this, the poll thread accumulates ~110 ms of backlog per cycle
+    (≈6+ minutes after an hour of running).
+    """
     try:
+        # Discard any lines already sitting in the OS UART buffer.
+        # The LuminOx streams at 1 Hz; old lines are stale by definition.
+        ser.reset_input_buffer()
         raw_bytes = ser.readline()
         if not raw_bytes:
             return {"error": "timeout / no data"}

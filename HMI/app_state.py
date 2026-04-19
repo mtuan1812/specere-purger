@@ -15,6 +15,8 @@ class RuntimeState:
         self.state = UiState()
         self.state.valves = ValveState()
         self._last_seen_epoch = None
+        self._lox_fault_messages: list = []
+        self._i2c_fault_messages: list = []
         self._csv_folder = os.path.join(BASE_DIR, "telemetry")
         os.makedirs(self._csv_folder, exist_ok=True)
         self._current_date_str = None
@@ -135,26 +137,59 @@ class RuntimeState:
         elif self.state.fault: self.state.system_status = "System Fault ↗"
         else: self.state.system_status = "System Normal ↗"
 
-    def step(self):
+    def step_lox(self):
+        """Called from LuminOxThread. Blocks on readline() ~1 Hz.
+        Updates O2/ppO2/pressure, drives control loop, appends history.
+        """
         try:
-            result = self.sensor_backend.read_once(self.log)
+            result = self.sensor_backend.read_lox(self.log)
         except Exception:
             self.sensor_backend = create_sensor_backend(self.state.valves, self.log)
-            result = self.sensor_backend.read_once(self.log)
+            result = self.sensor_backend.read_lox(self.log)
         now = time.time()
         with self.lock:
-            self.state.metrics = result.telemetry
-            if self.state.metrics.temp_c is not None: self.state.metrics.temp_c = round(self.state.metrics.temp_c, 2)
-            if self.state.metrics.rh_pct is not None: self.state.metrics.rh_pct = round(self.state.metrics.rh_pct, 2)
-            if result.telemetry.has_any_value():
+            self.state.metrics.o2_pct = result.o2_pct
+            self.state.metrics.ppo2 = result.ppo2_mbar
+            self.state.metrics.pressure_mbar = result.pressure_mbar
+            self._lox_fault_messages = result.fault_messages
+            if result.o2_pct is not None:
                 self._last_seen_epoch = now
             self.state.connected = self.sensor_backend.is_connected
             self.state.sensor_backend = self.sensor_backend.backend_name
-            self._apply_fault_logic(result.fault_messages)
+            self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
             self._apply_auto_mode_logic()
-            self.state.history.append(HistoryPoint(ts=now, o2=result.telemetry.o2_pct, flow=result.telemetry.flow_slm, pressure=result.telemetry.pressure_mbar, ppo2=result.telemetry.ppo2))
+            # Snapshot current flow (written by I2C thread) into history point
+            self.state.history.append(HistoryPoint(
+                ts=now,
+                o2=result.o2_pct,
+                flow=self.state.metrics.flow_slm,
+                pressure=result.pressure_mbar,
+                ppo2=result.ppo2_mbar,
+            ))
             self.state.history = self.state.history[-90000:]
             self._append_csv_row(now)
+            self._refresh_status_strings()
+            self.state.console_text = "\n".join(self.console_lines[-120:])
+
+    def step_i2c(self, read_sht: bool = False):
+        """Called from I2CThread at ~5 Hz. Patches only flow/temp/rh on metrics.
+        Does NOT own backend reinitialisation—that belongs to step_lox().
+        """
+        try:
+            result = self.sensor_backend.read_i2c(self.log, read_sht=read_sht)
+        except Exception as exc:
+            with self.lock:
+                self._i2c_fault_messages = [f"I2C: {exc}"]
+            return
+        with self.lock:
+            if result.flow_slm is not None:
+                self.state.metrics.flow_slm = result.flow_slm
+            if read_sht:
+                if result.temp_c is not None:
+                    self.state.metrics.temp_c = round(result.temp_c, 2)
+                if result.rh_pct is not None:
+                    self.state.metrics.rh_pct = round(result.rh_pct, 2)
+            self._i2c_fault_messages = result.fault_messages
             self._refresh_status_strings()
             self.state.console_text = "\n".join(self.console_lines[-120:])
 

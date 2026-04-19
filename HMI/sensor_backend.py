@@ -1,7 +1,7 @@
 
 import importlib.util, math, os, time
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 from models import TelemetryData
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,13 +19,25 @@ def load_test_module():
         return None, exc
 
 @dataclass
-class BackendReadResult:
-    telemetry: TelemetryData
+class BackendLoxResult:
+    """Result of a single LuminOx UART read (~1 Hz, blocking)."""
+    o2_pct: Optional[float]
+    ppo2_mbar: Optional[float]
+    pressure_mbar: Optional[float]
+    fault_messages: List[str]
+
+@dataclass
+class BackendI2cResult:
+    """Result of a single I2C read cycle (SFM4300 always; SHT45 optional)."""
+    flow_slm: Optional[float]
+    temp_c: Optional[float]   # None when SHT45 was skipped this cycle
+    rh_pct: Optional[float]   # None when SHT45 was skipped this cycle
     fault_messages: List[str]
 
 class SensorBackend:
     def initialize(self, log): raise NotImplementedError
-    def read_once(self, log): raise NotImplementedError
+    def read_lox(self, log) -> BackendLoxResult: raise NotImplementedError
+    def read_i2c(self, log, read_sht: bool = False) -> BackendI2cResult: raise NotImplementedError
     def shutdown(self, log): raise NotImplementedError
     @property
     def is_connected(self): raise NotImplementedError
@@ -35,20 +47,34 @@ class SensorBackend:
 class SimulatedSensorBackend(SensorBackend):
     def __init__(self, valve_state):
         self._valve_state = valve_state
+
     def initialize(self, log): log("Simulation backend active")
-    def read_once(self, log):
+
+    def read_lox(self, log) -> BackendLoxResult:
+        """Simulates the 1 Hz UART stream by sleeping 1 s."""
+        time.sleep(1.0)
         t = time.time()
-        o2 = max(0.1, 2.2 + 0.6 * math.sin(t / 18.0) - (0.8 if self._valve_state.purge else 0) - (0.3 if self._valve_state.steady else 0))
-        flow = (5.5 if self._valve_state.purge else 0.0) + (0.7 if self._valve_state.steady else 0.0)
-        telemetry = TelemetryData(
+        o2 = max(0.1, 2.2 + 0.6 * math.sin(t / 18.0)
+                      - (0.8 if self._valve_state.purge else 0)
+                      - (0.3 if self._valve_state.steady else 0))
+        return BackendLoxResult(
             o2_pct=round(o2, 2),
-            flow_slm=round(flow, 2),
+            ppo2_mbar=round(max(0, o2 / 100.0 * 1013), 1),
             pressure_mbar=round(1013 + 4 * math.sin(t / 30.0), 2),
-            ppo2=round(max(0, o2 / 100.0 * 1013), 1),
-            temp_c=round(24 + 1.0 * math.sin(t / 40.0), 2),
-            rh_pct=round(48 + 8 * math.sin(t / 55.0), 2),
+            fault_messages=[],
         )
-        return BackendReadResult(telemetry=telemetry, fault_messages=[])
+
+    def read_i2c(self, log, read_sht: bool = False) -> BackendI2cResult:
+        """Returns immediately — the I2C thread's deadline scheduler controls pacing."""
+        t = time.time()
+        flow = (5.5 if self._valve_state.purge else 0.0) + (0.7 if self._valve_state.steady else 0.0)
+        return BackendI2cResult(
+            flow_slm=round(flow, 2),
+            temp_c=round(24 + 1.0 * math.sin(t / 40.0), 2) if read_sht else None,
+            rh_pct=round(48 + 8 * math.sin(t / 55.0), 2) if read_sht else None,
+            fault_messages=[],
+        )
+
     def shutdown(self, log): log("Simulation backend shutdown")
     @property
     def is_connected(self): return False
@@ -61,6 +87,7 @@ class TestPySensorBackend(SensorBackend):
         self.bus = None
         self.ser = None
         self.connected = False
+
     def initialize(self, log):
         self.bus = self.test_mod.smbus2.SMBus(self.test_mod.I2C_BUS)
         self.ser = self.test_mod.serial.Serial(
@@ -76,40 +103,55 @@ class TestPySensorBackend(SensorBackend):
         self.ser.reset_input_buffer()
         self.connected = True
         log("Sensor backend initialized from test.py")
-    def read_once(self, log):
+
+    def read_lox(self, log) -> BackendLoxResult:
+        """Blocks until a fresh LuminOx line arrives (~1 Hz via readline())."""
         try:
             lox = self.test_mod.luminox_read_line(self.ser)
-            sfm = self.test_mod.sfm4300_read(self.bus)
-            sht = self.test_mod.sht45_read(self.bus)
-            telemetry = TelemetryData(
-                o2_pct=None if "error" in lox else lox.get("o2_pct"),
-                flow_slm=None if "error" in sfm else sfm.get("flow_slm"),
-                pressure_mbar=None if "error" in lox else lox.get("pressure_mbar"),
-                ppo2=None if "error" in lox else lox.get("ppo2_mbar"),
-                temp_c=None if "error" in sht else sht.get("temp_c"),
-                rh_pct=None if "error" in sht else sht.get("rh_pct"),
-            )
             faults = []
-            if "error" in lox: faults.append(f"LOX: {lox['error']}")
-            if "error" in sfm: faults.append(f"SFM4300: {sfm['error']}")
-            if "error" in sht: faults.append(f"SHT45: {sht['error']}")
-            if "status_ok" in lox and not lox.get("status_ok", False): faults.append(f"LuminOx status {lox.get('status')}")
-            def fmt(v, decimals): return f"{v:.{decimals}f}" if v is not None else "ERR"
-            
-            lox_status = lox.get('status', 'ERR')
-            log(f"O2 status: e {lox_status}")
-
-            sfm_status = sfm.get('status', 'N/A')
-            log(f"Flow status: {sfm_status}")
-
-            sht_status = "OK" if "error" not in sht else f"ERR ({sht['error']})"
-            log(f"SHT45: {sht_status}")
-            return BackendReadResult(telemetry=telemetry, fault_messages=faults)
+            if "error" in lox:
+                faults.append(f"LOX: {lox['error']}")
+            elif "status_ok" in lox and not lox.get("status_ok", False):
+                faults.append(f"LuminOx status {lox.get('status')}")
+            log(f"O2 status: e {lox.get('status', 'ERR')}")
+            return BackendLoxResult(
+                o2_pct=None if "error" in lox else lox.get("o2_pct"),
+                ppo2_mbar=None if "error" in lox else lox.get("ppo2_mbar"),
+                pressure_mbar=None if "error" in lox else lox.get("pressure_mbar"),
+                fault_messages=faults,
+            )
         except Exception as exc:
             self.connected = False
-            log(f"Sensor read failure; closing sensors ({exc})")
-            self.shutdown(log)
+            log(f"LuminOx read failure ({exc})")
             raise
+
+    def read_i2c(self, log, read_sht: bool = False) -> BackendI2cResult:
+        """Reads SFM4300 (always) and optionally SHT45. Typically <10 ms total."""
+        try:
+            sfm = self.test_mod.sfm4300_read(self.bus)
+            log(f"Flow status: {sfm.get('status', 'N/A')}")
+
+            sht: dict = {}
+            if read_sht:
+                sht = self.test_mod.sht45_read(self.bus)
+                sht_status = "OK" if "error" not in sht else f"ERR ({sht['error']})"
+                log(f"SHT45: {sht_status}")
+
+            faults = []
+            if "error" in sfm: faults.append(f"SFM4300: {sfm['error']}")
+            if "error" in sht: faults.append(f"SHT45: {sht['error']}")
+
+            return BackendI2cResult(
+                flow_slm=None if "error" in sfm else sfm.get("flow_slm"),
+                temp_c=(None if (not read_sht or "error" in sht) else sht.get("temp_c")),
+                rh_pct=(None if (not read_sht or "error" in sht) else sht.get("rh_pct")),
+                fault_messages=faults,
+            )
+        except Exception as exc:
+            self.connected = False
+            log(f"I2C read failure ({exc})")
+            raise
+
     def shutdown(self, log):
         try:
             if self.bus is not None:
@@ -132,6 +174,7 @@ class TestPySensorBackend(SensorBackend):
             finally:
                 self.ser = None
         self.connected = False
+
     @property
     def is_connected(self): return self.connected
     @property
