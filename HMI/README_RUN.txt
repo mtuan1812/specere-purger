@@ -12,5 +12,3 @@ Python file layout:
 - sensor_backend.py -> hardware / simulation wrapper around test.py
 - models.py         -> shared dataclasses
 - test.py           -> unchanged team-provided sensor code
-
-- gpio_controller.py -> hardware valve outputs, shared PWM, hardware E-stop input

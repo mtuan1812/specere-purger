@@ -63,6 +63,14 @@ _sfm_started = False
 def sfm4300_start(bus: smbus2.SMBus):
     global _sfm_started
     if not _sfm_started:
+        # Robustness: explicitly stop any previous measurement just in case
+        try:
+            bus.write_i2c_block_data(SFM4300_ADDR, SFM4300_CMD_STOP[0],
+                                     SFM4300_CMD_STOP[1:])
+            time.sleep(0.05)
+        except Exception:
+            pass
+
         bus.write_i2c_block_data(SFM4300_ADDR, SFM4300_CMD_START_AIR[0],
                                  SFM4300_CMD_START_AIR[1:])
         time.sleep(SFM4300_WARMUP_S)   # wait for first measurement to be ready
@@ -153,7 +161,7 @@ def luminox_parse_stream(line: str) -> dict:
     e.g. "O 0210.3 T +20.5 P 1013 % 020.90 e 0000"
     Returns dict with ppo2_mbar, temp_c, pressure_mbar, o2_pct, status
     """
-    result = {}
+    result = {"raw": line.strip()}
     try:
         parts = line.strip().split()
         # parts: ['O','0210.3','T','+20.5','P','1013','%','020.90','e','0000']
@@ -180,9 +188,13 @@ def luminox_parse_stream(line: str) -> dict:
 def luminox_read_line(ser: serial.Serial) -> dict:
     """Read one complete line from LuminOx. Returns parsed dict or error."""
     try:
-        raw = ser.readline().decode("ascii", errors="replace").strip()
-        if not raw:
+        raw_bytes = ser.readline()
+        if not raw_bytes:
             return {"error": "timeout / no data"}
+        if not raw_bytes.endswith(b'\n'):
+            return {"error": "stale value / no newline detected within timeout"}
+            
+        raw = raw_bytes.decode("ascii", errors="replace").strip()
         if raw.startswith("E "):
             return {"error": f"sensor error: {raw}"}
         return luminox_parse_stream(raw)
@@ -283,7 +295,7 @@ def main():
         bytesize=serial.EIGHTBITS,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
-        timeout=1,
+        timeout=2.1,
     )
 
     ser.write(b"M 0\r\n")
