@@ -101,6 +101,8 @@ class TestPySensorBackend(SensorBackend):
         self.ser.write(b"M 0\r\n")
         time.sleep(0.5)
         self.ser.reset_input_buffer()
+        # Reset the SFM4300 start flag so the new bus handle re-sends the start command.
+        self.test_mod.sfm4300_reset()
         self.connected = True
         log("Sensor backend initialized from test.py")
 

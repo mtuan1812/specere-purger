@@ -60,6 +60,14 @@ SFM4300_POLL_S         = 0.10    # inter-read delay when sensor is running
 
 _sfm_started = False
 
+def sfm4300_reset():
+    """Reset the continuous-measurement start flag.
+    Call this whenever a new SMBus instance is created so that sfm4300_start()
+    re-sends the start command on the fresh bus handle.
+    """
+    global _sfm_started
+    _sfm_started = False
+
 def sfm4300_start(bus: smbus2.SMBus):
     global _sfm_started
     if not _sfm_started:

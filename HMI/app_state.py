@@ -167,9 +167,11 @@ class RuntimeState:
                 ppo2=result.ppo2_mbar,
             ))
             self.state.history = self.state.history[-90000:]
-            self._append_csv_row(now)
             self._refresh_status_strings()
             self.state.console_text = "\n".join(self.console_lines[-120:])
+        # CSV append/flush OUTSIDE the lock — file I/O must never hold self.lock.
+        # _csv_buffer is only written by this thread (LuminOxThread) so no lock needed.
+        self._append_csv_row(now)
 
     def step_i2c(self, read_sht: bool = False):
         """Called from I2CThread at ~5 Hz. Patches only flow/temp/rh on metrics.
@@ -235,9 +237,41 @@ class RuntimeState:
             self.state.console_text = "\n".join(self.console_lines[-120:])
 
     def snapshot_dict(self, host=None, range_sec=1200):
+        """Return the API dict for the frontend.
+
+        Only scalar field reads and a shallow history copy happen under the lock.
+        The expensive filter/serialisation of up to 90,000 HistoryPoints is done
+        OUTSIDE the lock so sensor threads are not stalled during each 4 Hz poll.
+        """
         with self.lock:
-            self.state.csv_url = f"http://{self._lan_ip}:8000/telemetry/"
-            self.state.console_text = "\n".join(self.console_lines[-120:])
-            self.state.sensor_backend = self.sensor_backend.backend_name
-            self.state.connected = self.sensor_backend.is_connected
-            return self.state.to_api_dict(range_sec)
+            s = self.state
+            snap = {
+                "mode":           s.mode,
+                "auto_running":   s.auto_running,
+                "auto_path":      s.auto_path,
+                "target_o2":      s.target_o2,
+                "valves":         s.valves.to_dict(),
+                "estop":          s.estop,
+                "fault":          s.fault,
+                "fault_message":  s.fault_message,
+                "connected":      self.sensor_backend.is_connected,
+                "locked_controls":s.locked_controls,
+                "dimmed":         s.dimmed,
+                "timestamp_str":  s.timestamp_str,
+                "last_seen_str":  s.last_seen_str,
+                "system_status":  s.system_status,
+                "metrics":        s.metrics.to_dict(),
+                "console_text":   "\n".join(self.console_lines[-120:]),
+                "csv_url":        f"http://{self._lan_ip}:8000/telemetry/",
+                "sensor_backend": self.sensor_backend.backend_name,
+            }
+            history_snap = list(s.history)   # shallow copy — O(n) but no allocation per item
+        # Expensive: filter + asdict on up to 90,000 points — done without the lock
+        now = time.time()
+        cutoff = now - range_sec
+        recent = [p for p in history_snap if p.ts >= cutoff]
+        if len(recent) > 1000:
+            step = len(recent) // 500
+            recent = recent[::step]
+        snap["history"] = [p.to_dict() for p in recent]
+        return snap

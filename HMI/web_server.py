@@ -156,7 +156,11 @@ def make_handler(runtime):
                 y = top + (bottom-top) * i / 5; draw.line([left,y,right,y], fill=(196,196,196), width=1)
             for i in range(7):
                 x = left + (right-left) * i / 6; draw.line([x,top,x,bottom], fill=(196,196,196), width=1)
-            history = [point for point in runtime.state.history if point.ts >= time.time() - range_sec and getattr(point, metric, None) is not None]
+            with runtime.lock:
+                history_snap = list(runtime.state.history)
+            cutoff = time.time() - range_sec
+            history = [point for point in history_snap
+                       if point.ts >= cutoff and getattr(point, metric, None) is not None]
             if len(history) >= 2:
                 values = [float(getattr(point, metric)) for point in history]
                 low, high = min(values), max(values); span = max(high - low, 0.001); low -= span * 0.1; high += span * 0.1

@@ -286,7 +286,16 @@ async function init() {
     $("btnLock").onclick = () => post("toggle_lock").then(refreshState);
     
     await refreshState();
-    setInterval(() => refreshState().catch(console.error), 250);
+    // Self-rescheduling loop: next poll fires 250ms *after* the previous response
+    // arrives, making overlapping in-flight requests structurally impossible.
+    (async function pollLoop() {
+        while (true) {
+            const t0 = performance.now();
+            try { await refreshState(); } catch (e) { console.error(e); }
+            const wait = Math.max(0, 250 - (performance.now() - t0));
+            await new Promise(r => setTimeout(r, wait));
+        }
+    })();
 }
 
 window.addEventListener("DOMContentLoaded", init);
