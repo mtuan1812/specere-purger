@@ -286,7 +286,7 @@ async function init() {
     $("btnLock").onclick = () => post("toggle_lock").then(refreshState);
     
     await refreshState();
-    setInterval(() => refreshState().catch(console.error), 1000);
+    setInterval(() => refreshState().catch(console.error), 250);
 }
 
 window.addEventListener("DOMContentLoaded", init);
