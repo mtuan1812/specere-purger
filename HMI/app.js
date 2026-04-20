@@ -22,9 +22,9 @@ function setMode(mode) {
     $("manualArea").classList.toggle("hidden", mode !== "manual");
 }
 
-function applyPathUI(path) {
-    $("pathPurge").className = "pathBtn" + (path === "purge" ? " active-purge" : "");
-    $("pathSteady").className = "pathBtn" + (path === "steady" ? " active-steady" : "");
+function applyPathUI(valves) {
+    $("pathPurge").className = "pathBtn" + (valves.purge ? " active-purge" : "");
+    $("pathSteady").className = "pathBtn" + (valves.steady ? " active-steady" : "");
 }
 
 function applyStartStop(running) {
@@ -40,11 +40,13 @@ function applyStatusBar(fault, estop, ts, text, lastSeen) {
     $("lastSeenText").textContent = `Data last seen: ${lastSeen || "--"}`;
 }
 
-function updateDio(v, a, c, e) {
-    $("dio1").className = "dio" + (v.purge ? " on" : "");
-    $("dio2").className = "dio" + (v.steady ? " on" : "");
-    $("dio3").className = "dio" + (a ? " warn" : "");
-    $("dio4").className = "dio" + (c && !e ? " on" : (e ? " stop" : ""));
+function updateDio(v, estop, fault) {
+    const isFault = estop || fault;
+    const getClass = (isOn) => isFault ? "dio fault" : (isOn ? "dio on" : "dio");
+    $("dio1").className = getClass(v.purge);
+    $("dio2").className = getClass(v.steady);
+    $("dio3").className = getClass(v.dio3);
+    $("dio4").className = getClass(v.dio4);
 }
 
 function updateReadings(m) {
@@ -183,10 +185,10 @@ async function refreshState() {
     state.latest = data;
     
     setMode(data.mode);
-    applyPathUI(data.auto_path);
+    applyPathUI(data.valves);
     applyStartStop(data.auto_running);
     updateReadings(data.metrics);
-    updateDio(data.valves, data.auto_running, data.connected, data.estop);
+    updateDio(data.valves, data.estop, data.fault);
     applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.last_seen_str);
     
     $("setValue").textContent = fmt(data.target_o2, 1);
@@ -237,10 +239,10 @@ async function init() {
     setupPress("setDown", -.1);
     
     $("startStopBtn").onclick = () => post("toggle_auto_running").then(refreshState);
-    $("pathPurge").onclick = () => post("set_auto_path", { path: "purge" }).then(refreshState);
-    $("pathSteady").onclick = () => post("set_auto_path", { path: "steady" }).then(refreshState);
     $("togglePurgeBtn").onclick = () => post("toggle_valve", { valve: "purge" }).then(refreshState);
     $("toggleSteadyBtn").onclick = () => post("toggle_valve", { valve: "steady" }).then(refreshState);
+    $("toggleDio3Btn").onclick = () => post("toggle_valve", { valve: "dio3" }).then(refreshState);
+    $("toggleDio4Btn").onclick = () => post("toggle_valve", { valve: "dio4" }).then(refreshState);
     
     document.querySelectorAll(".metricTab").forEach(btn => btn.onclick = () => {
         document.querySelectorAll(".metricTab").forEach(b => b.classList.remove("active"));

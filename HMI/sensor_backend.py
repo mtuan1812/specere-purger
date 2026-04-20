@@ -113,9 +113,8 @@ class TestPySensorBackend(SensorBackend):
             faults = []
             if "error" in lox:
                 faults.append(f"LOX: {lox['error']}")
-            elif "status_ok" in lox and not lox.get("status_ok", False):
+            if "status_ok" in lox and not lox.get("status_ok", False):
                 faults.append(f"LuminOx status {lox.get('status')}")
-            log(f"O2 status: e {lox.get('status', 'ERR')}")
             return BackendLoxResult(
                 o2_pct=None if "error" in lox else lox.get("o2_pct"),
                 ppo2_mbar=None if "error" in lox else lox.get("ppo2_mbar"),
@@ -131,13 +130,10 @@ class TestPySensorBackend(SensorBackend):
         """Reads SFM4300 (always) and optionally SHT45. Typically <10 ms total."""
         try:
             sfm = self.test_mod.sfm4300_read(self.bus)
-            log(f"Flow status: {sfm.get('status', 'N/A')}")
 
             sht: dict = {}
             if read_sht:
                 sht = self.test_mod.sht45_read(self.bus)
-                sht_status = "OK" if "error" not in sht else f"ERR ({sht['error']})"
-                log(f"SHT45: {sht_status}")
 
             faults = []
             if "error" in sfm: faults.append(f"SFM4300: {sfm['error']}")

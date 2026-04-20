@@ -43,6 +43,25 @@ class I2CThread(threading.Thread):
                 time.sleep(sleep_for)
             # If read took > 200 ms, skip sleep and catch up next cycle.
 
+class GPIOThread(threading.Thread):
+    """Polls hardware E-stop and applies valve states at 10 Hz."""
+    _INTERVAL = 0.1
+    daemon = True
+    def __init__(self, runtime):
+        super().__init__()
+        self.runtime = runtime
+    def run(self):
+        next_tick = time.monotonic()
+        while True:
+            try:
+                self.runtime.step_gpio()
+            except Exception as exc:
+                self.runtime.log(f"GPIO thread error: {exc}")
+            next_tick += self._INTERVAL
+            sleep_for = next_tick - time.monotonic()
+            if sleep_for > 0:
+                time.sleep(sleep_for)
+
 def make_handler(runtime):
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code, data, content_type="text/plain; charset=utf-8"):
@@ -178,5 +197,6 @@ def create_server(runtime):
     handler = make_handler(runtime)
     lox_thread = LuminOxThread(runtime)
     i2c_thread = I2CThread(runtime)
+    gpio_thread = GPIOThread(runtime)
     server = ThreadingHTTPServer(("0.0.0.0", 8000), handler)
-    return server, lox_thread, i2c_thread
+    return server, lox_thread, i2c_thread, gpio_thread

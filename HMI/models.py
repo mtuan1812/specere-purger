@@ -19,12 +19,16 @@ class TelemetryData:
 
 @dataclass
 class ValveState:
-    """Logical state of the two controllable valves."""
+    """Logical state of the four Controllable valves/DIOs."""
     purge: bool = False
     steady: bool = False
+    dio3: bool = False
+    dio4: bool = False
     def all_off(self) -> None:
         self.purge = False
         self.steady = False
+        self.dio3 = False
+        self.dio4 = False
     def to_dict(self) -> Dict[str, bool]:
         return asdict(self)
 
@@ -44,7 +48,6 @@ class UiState:
     """High-level state returned to the frontend."""
     mode: str = "auto"
     auto_running: bool = True
-    auto_path: str = "purge"
     target_o2: float = 1.0
     valves: ValveState = field(default_factory=ValveState)
     estop: bool = False
@@ -74,7 +77,6 @@ class UiState:
         return {
             "mode": self.mode,
             "auto_running": self.auto_running,
-            "auto_path": self.auto_path,
             "target_o2": self.target_o2,
             "valves": self.valves.to_dict(),
             "estop": self.estop,

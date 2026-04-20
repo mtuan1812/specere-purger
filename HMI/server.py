@@ -5,9 +5,10 @@ from web_server import create_server
 
 def main():
     runtime = RuntimeState()
-    server, lox_thread, i2c_thread = create_server(runtime)
+    server, lox_thread, i2c_thread, gpio_thread = create_server(runtime)
     lox_thread.start()
     i2c_thread.start()
+    gpio_thread.start()
 
     # Catch SIGTERM from kill/pkill and turn it into a KeyboardInterrupt
     def handle_sigterm(signum, frame):

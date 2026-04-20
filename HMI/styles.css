@@ -33,18 +33,18 @@ body{display:flex;justify-content:center;align-items:flex-start;padding-top:8px;
 .startStopWrap button{width:100%;height:100%;border:none;cursor:pointer;font-size:34px;font-weight:700;color:#fff;background:var(--red)}
 .startStopWrap button.is-start{background:var(--green)}
 .pathBox{display:grid;grid-template-rows:1fr 1fr}
-.pathBtn{border:none;cursor:pointer;font-size:24px;background:#f7f7f7}
+.pathBtn{border:none;cursor:default;font-size:24px;background:#f7f7f7;display:flex;align-items:center;justify-content:center}
 .pathBtn + .pathBtn{border-top:2px solid var(--line)}
 .pathBtn.active-purge{background:var(--yellow)} .pathBtn.active-steady{background:var(--light-blue)}
-.manualArea{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:0 2px}
-.manualBtn{display:flex;align-items:center;justify-content:center;text-align:center;font-size:28px;background:var(--light-blue);cursor:pointer;line-height:1.2}
+.manualArea{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:12px;padding:0}
+.manualBtn{display:flex;align-items:center;justify-content:center;text-align:center;font-size:22px;font-weight:600;background:var(--light-blue);cursor:pointer;line-height:1.2}
 .infoGrid{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);border:2px solid var(--line)}
 .infoCell{border-right:2px solid var(--line);border-bottom:2px solid var(--line);padding:12px 10px 6px;background:#f7f7f7;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center}
 .infoCell:nth-child(3n){border-right:none} .infoCell:nth-last-child(-n+3){border-bottom:none}
 .infoLabel{font-size:18px;margin-bottom:10px} .infoValue{font-size:21px;line-height:1.1}
 .dioWrap{width:100%;display:flex;gap:8px;justify-content:center;margin-top:-4px}
 .dio{width:32px;height:32px;border:2px solid var(--line);background:#f7f7f7;font-size:18px;display:flex;align-items:center;justify-content:center}
-.dio.on{background:var(--light-blue)} .dio.warn{background:#f6d365} .dio.stop{background:#fca5a5}
+.dio.on{background:var(--green);color:#fff} .dio.fault{background:var(--status-red);color:#fff;border-color:var(--status-red)}
 .rightPanel{display:grid;grid-template-rows:40px 40px 1fr 50px;gap:8px;width:249px;min-width:249px}
 .metricTabs,.rangeTabs{display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
 .metricTab,.rangeTab{border:none;background:var(--gray-2);font-size:17px;cursor:pointer;min-width:0}

@@ -3,9 +3,12 @@ import csv, os, threading, time
 from datetime import datetime
 from models import HistoryPoint, UiState, ValveState
 from sensor_backend import create_sensor_backend
+from gpio_controller import GPIOValveController
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "telemetry.csv")
+
+HYSTERESIS_PCT = 0.5
 
 class RuntimeState:
     """Main backend state container used by the web server and poller thread."""
@@ -23,6 +26,8 @@ class RuntimeState:
         self._csv_buffer = []
         self.sensor_backend = create_sensor_backend(self.state.valves, self.log)
         self._lan_ip = self._get_lan_ip()
+        self.gpio = GPIOValveController(self.log)
+        self.gpio.initialize()
 
     def _get_lan_ip(self):
         import socket
@@ -66,10 +71,10 @@ class RuntimeState:
             self._clean_old_csvs(now)
             if not os.path.exists(path):
                 with open(path, "w", newline="", encoding="utf-8") as f:
-                    csv.writer(f).writerow(["timestamp_iso","epoch_s","o2_pct","flow_slm","pressure_mbar","ppo2_mbar","temp_c","rh_pct","purge_valve","steady_valve","mode","auto_running","fault","estop"])
+                    csv.writer(f).writerow(["timestamp_iso","epoch_s","o2_pct","flow_slm","pressure_mbar","ppo2_mbar","temp_c","rh_pct","dio1_purge","dio2_steady","dio3","dio4","mode","auto_running","fault","estop"])
                     
         m = self.state.metrics
-        row = [dt.isoformat(sep=" ", timespec="seconds"), int(now), m.o2_pct, m.flow_slm, m.pressure_mbar, m.ppo2, m.temp_c, m.rh_pct, int(self.state.valves.purge), int(self.state.valves.steady), self.state.mode, int(self.state.auto_running), int(self.state.fault), int(self.state.estop)]
+        row = [dt.isoformat(sep=" ", timespec="seconds"), int(now), m.o2_pct, m.flow_slm, m.pressure_mbar, m.ppo2, m.temp_c, m.rh_pct, int(self.state.valves.purge), int(self.state.valves.steady), int(self.state.valves.dio3), int(self.state.valves.dio4), self.state.mode, int(self.state.auto_running), int(self.state.fault), int(self.state.estop)]
         self._csv_buffer.append((path, row))
         
         if len(self._csv_buffer) >= 120:
@@ -124,11 +129,14 @@ class RuntimeState:
             self.state.valves.all_off()
             return
         o2 = self.state.metrics.o2_pct
-        if o2 is not None and o2 > self.state.target_o2:
-            self.state.valves.purge = (self.state.auto_path == "purge")
-            self.state.valves.steady = (self.state.auto_path == "steady")
-        else:
-            self.state.valves.all_off()
+        if o2 is not None:
+            if o2 > self.state.target_o2 + HYSTERESIS_PCT:
+                self.state.valves.purge = True
+                self.state.valves.steady = False
+            elif o2 < self.state.target_o2 - HYSTERESIS_PCT:
+                self.state.valves.purge = False
+                self.state.valves.steady = True
+            # inside hysteresis band: leave valves as they are
 
     def _refresh_status_strings(self):
         self.state.timestamp_str = self._format_timestamp_now()
@@ -195,10 +203,27 @@ class RuntimeState:
             self._refresh_status_strings()
             self.state.console_text = "\n".join(self.console_lines[-120:])
 
+    def step_gpio(self):
+        estop = self.gpio.read_hardware_estop()
+        with self.lock:
+            if estop != self.state.estop:
+                self.state.estop = estop
+                self._refresh_status_strings()
+            
+            # Apply states. If estop is True, gpio_controller forces all to 0 hardware-wise
+            self.gpio.apply(
+                purge_on=self.state.valves.purge,
+                steady_on=self.state.valves.steady,
+                dio3_on=self.state.valves.dio3,
+                dio4_on=self.state.valves.dio4,
+                estop_active=estop
+            )
+
     def shutdown(self):
         self.log("Shutting down runtime")
         self._flush_csv_buffer()
         self.sensor_backend.shutdown(self.log)
+        self.gpio.shutdown()
 
     def handle_command(self, action, data):
         with self.lock:
@@ -210,13 +235,13 @@ class RuntimeState:
             elif action == "toggle_auto_running":
                 self.state.auto_running = not self.state.auto_running
                 if not self.state.auto_running: self.state.valves.all_off()
-            elif action == "set_auto_path":
-                self.state.auto_path = "steady" if data.get("path") == "steady" else "purge"
             elif action == "toggle_valve":
                 if not self.state.locked_controls and not self.state.estop:
                     valve = data.get("valve")
                     if valve == "purge": self.state.valves.purge = not self.state.valves.purge
                     elif valve == "steady": self.state.valves.steady = not self.state.valves.steady
+                    elif valve == "dio3": self.state.valves.dio3 = not self.state.valves.dio3
+                    elif valve == "dio4": self.state.valves.dio4 = not self.state.valves.dio4
             elif action == "toggle_estop":
                 self.log("Executing system shutdown script...")
                 import subprocess
@@ -248,7 +273,6 @@ class RuntimeState:
             snap = {
                 "mode":           s.mode,
                 "auto_running":   s.auto_running,
-                "auto_path":      s.auto_path,
                 "target_o2":      s.target_o2,
                 "valves":         s.valves.to_dict(),
                 "estop":          s.estop,

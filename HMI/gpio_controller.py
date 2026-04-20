@@ -29,10 +29,12 @@ except Exception:
 class GPIOValveController:
     """Owns all valve-related GPIO outputs and the hardware E-stop input."""
 
-    PURGE_PIN = 27
-    MAINTAIN_PIN = 26
     PWM_PIN = 20
     ESTOP_PIN = 22
+    PURGE_PIN = 27
+    MAINTAIN_PIN = 26
+    DIO3_PIN = 25
+    DIO4_PIN = 24
 
     PWM_FREQUENCY_HZ = 25
     KICK_DUTY = 100
@@ -45,7 +47,7 @@ class GPIOValveController:
         self._pwm = None
         
         self.lock = threading.Lock()
-        self._last_active_valve = None
+        self._last_valves = {"purge": False, "steady": False, "dio3": False, "dio4": False}
         self._pwm_timer = None
 
     def initialize(self) -> None:
@@ -61,6 +63,8 @@ class GPIOValveController:
             # Valve select outputs.
             GPIO.setup(self.PURGE_PIN, GPIO.OUT, initial=GPIO.LOW)
             GPIO.setup(self.MAINTAIN_PIN, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(self.DIO3_PIN, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(self.DIO4_PIN, GPIO.OUT, initial=GPIO.LOW)
 
             # Shared PWM output to the MOSFET board.
             GPIO.setup(self.PWM_PIN, GPIO.OUT, initial=GPIO.LOW)
@@ -96,14 +100,13 @@ class GPIOValveController:
             self._log(f"Failed to read hardware E-stop ({exc})")
             return False
 
-    def apply(self, purge_on: bool, maintain_on: bool, estop_active: bool) -> None:
+    def apply(self, purge_on: bool, steady_on: bool, dio3_on: bool, dio4_on: bool, estop_active: bool) -> None:
         """
         Drive valve-select outputs and shared PWM.
 
         Behavior:
         - If E-stop is active -> force all outputs off
-        - If both valves are off -> outputs off, PWM 0%
-        - If an active valve changes -> apply 100% kick for KICK_TIME_S
+        - If any valve transitions from False -> True -> apply 100% kick for KICK_TIME_S
         - After kick -> hold at lower duty cycle to save power
         """
         if not self._initialized:
@@ -114,31 +117,29 @@ class GPIOValveController:
                 self._force_all_off_locked()
                 return
 
-            active_valve = None
-            if purge_on and not maintain_on:
-                active_valve = "purge"
-            elif maintain_on and not purge_on:
-                active_valve = "maintain"
-            elif purge_on and maintain_on:
-                # Safety fallback: never intentionally energize both channels at once.
-                active_valve = "purge"
+            new_state = {"purge": purge_on, "steady": steady_on, "dio3": dio3_on, "dio4": dio4_on}
+            any_on = any(new_state.values())
 
-            if active_valve is None:
+            if not any_on:
                 self._force_all_off_locked()
                 return
 
-            # If switching valves, initialize the kick
-            if active_valve != self._last_active_valve:
-                self._last_active_valve = active_valve
-                
-                # Update GPIO channels
-                try:
-                    GPIO.output(self.PURGE_PIN, GPIO.HIGH if active_valve == "purge" else GPIO.LOW)
-                    GPIO.output(self.MAINTAIN_PIN, GPIO.HIGH if active_valve == "maintain" else GPIO.LOW)
-                    
+            # Determine if any valve turned ON that wasn't ON before
+            turned_on = any(new_state[k] and not self._last_valves[k] for k in new_state)
+
+            self._last_valves = new_state
+
+            # Update GPIO channels
+            try:
+                GPIO.output(self.PURGE_PIN, GPIO.HIGH if purge_on else GPIO.LOW)
+                GPIO.output(self.MAINTAIN_PIN, GPIO.HIGH if steady_on else GPIO.LOW)
+                GPIO.output(self.DIO3_PIN, GPIO.HIGH if dio3_on else GPIO.LOW)
+                GPIO.output(self.DIO4_PIN, GPIO.HIGH if dio4_on else GPIO.LOW)
+
+                if turned_on:
                     # Apply 100% kick
                     self._pwm.ChangeDutyCycle(self.KICK_DUTY)
-                    self._log(f"Valve transition -> {active_valve} (kick {self.KICK_DUTY}% for {int(self.KICK_TIME_S * 1000)} ms)")
+                    self._log(f"Valve transition (Turn ON) -> kick {self.KICK_DUTY}% for {int(self.KICK_TIME_S * 1000)} ms")
 
                     # Cancel any existing timer
                     if self._pwm_timer is not None:
@@ -148,15 +149,15 @@ class GPIOValveController:
                     self._pwm_timer = threading.Timer(self.KICK_TIME_S, self._downgrade_pwm)
                     self._pwm_timer.daemon = True
                     self._pwm_timer.start()
-                    
-                except Exception as exc:
-                    self._log(f"Failed to switch valves ({exc})")
+                
+            except Exception as exc:
+                self._log(f"Failed to switch valves ({exc})")
 
     def _downgrade_pwm(self):
         """Timer callback to reduce PWM to hold duty."""
         with self.lock:
             # Check if all valves were shut off suddenly
-            if self._last_active_valve is None:
+            if not any(self._last_valves.values()):
                 return
             try:
                 self._pwm.ChangeDutyCycle(self.HOLD_DUTY)
@@ -175,8 +176,10 @@ class GPIOValveController:
         try:
             GPIO.output(self.PURGE_PIN, GPIO.LOW)
             GPIO.output(self.MAINTAIN_PIN, GPIO.LOW)
+            GPIO.output(self.DIO3_PIN, GPIO.LOW)
+            GPIO.output(self.DIO4_PIN, GPIO.LOW)
             self._pwm.ChangeDutyCycle(0)
-            self._last_active_valve = None
+            self._last_valves = {"purge": False, "steady": False, "dio3": False, "dio4": False}
         except Exception as exc:
             self._log(f"Failed to force valve outputs off ({exc})")
 
@@ -199,7 +202,7 @@ class GPIOValveController:
             self._log(f"GPIO shutdown warning ({exc})")
         finally:
             try:
-                GPIO.cleanup([self.PURGE_PIN, self.MAINTAIN_PIN, self.PWM_PIN, self.ESTOP_PIN])
+                GPIO.cleanup([self.PURGE_PIN, self.MAINTAIN_PIN, self.DIO3_PIN, self.DIO4_PIN, self.PWM_PIN, self.ESTOP_PIN])
             except Exception:
                 pass
             self._initialized = False
