@@ -271,9 +271,17 @@ class RuntimeState:
         with self.lock:
             if estop != self.state.estop:
                 self.state.estop = estop
+                if estop:
+                    # E-stop asserted: reset to safe state
+                    self.state.mode = "standby"
+                    self.state.valves.all_off()
+                    self.log("E-stop asserted — mode reset to standby, all valves off")
+                else:
+                    self.log("E-stop released")
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-            
+                self.state.console_text = "\n".join(self.console_lines[-120:])
+
             # Apply states. If estop is True, gpio_controller forces all to 0 hardware-wise
             self.gpio.apply(
                 dio0_on=self.state.valves.dio0,
