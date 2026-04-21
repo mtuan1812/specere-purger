@@ -22,6 +22,7 @@ class RuntimeState:
         self._last_seen_epoch = None
         self._lox_fault_messages: list = []
         self._i2c_fault_messages: list = []
+        self._last_fault_message: str = ""
         self._csv_folder = os.path.join(BASE_DIR, "telemetry")
         os.makedirs(self._csv_folder, exist_ok=True)
         self._current_date_str = None
@@ -129,6 +130,13 @@ class RuntimeState:
         else:
             self.state.fault = False
             self.state.fault_message = ""
+        # Log whenever the fault state changes so it appears in the console.
+        if self.state.fault_message != self._last_fault_message:
+            if self.state.fault_message:
+                self.log(f"FAULT: {self.state.fault_message}")
+            else:
+                self.log("Fault cleared — system normal")
+            self._last_fault_message = self.state.fault_message
 
     def _apply_auto_mode_logic(self):
         """Handle auto-mode state machine transitions."""
