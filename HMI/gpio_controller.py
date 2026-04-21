@@ -4,7 +4,7 @@ GPIO / PWM output handling for the valve hardware.
 Hardware assignment used in this implementation:
 - Purge valve    -> GPIO27 -> DIO0 -> OUT0
 - Maintain valve -> GPIO26 -> DIO1 -> OUT1
-- Shared PWM     -> GPIO20
+- Shared PWM     -> GPIO19  (PWM1, true hardware DMA via pigpio)
 - Hardware E-stop input (active-low) -> GPIO22
 
 Notes:
@@ -20,34 +20,37 @@ import threading
 
 try:
     import RPi.GPIO as GPIO
+    import pigpio
     GPIO_AVAILABLE = True
 except Exception:
     GPIO = None
+    pigpio = None
     GPIO_AVAILABLE = False
 
 
 class GPIOValveController:
     """Owns all valve-related GPIO outputs and the hardware E-stop input."""
 
-    PWM_PIN = 20
+    PWM_PIN = 19
     ESTOP_PIN = 22
-    PURGE_PIN = 27
-    MAINTAIN_PIN = 26
-    DIO3_PIN = 25
-    DIO4_PIN = 24
+    DIO0_PIN = 27
+    DIO1_PIN = 26
+    DIO2_PIN = 25
+    DIO3_PIN = 24
 
-    PWM_FREQUENCY_HZ = 25
-    KICK_DUTY = 100
-    HOLD_DUTY = 35
+    PWM_FREQUENCY_HZ = 20000
+    KICK_DUTY = 1_000_000
+    HOLD_DUTY = 350_000
     KICK_TIME_S = 0.250
 
     def __init__(self, log):
         self._log = log
         self._initialized = False
+        self.pi = None
         self._pwm = None
         
         self.lock = threading.Lock()
-        self._last_valves = {"purge": False, "steady": False, "dio3": False, "dio4": False}
+        self._last_valves = {"dio0": False, "dio1": False, "dio2": False, "dio3": False}
         self._pwm_timer = None
 
     def initialize(self) -> None:
@@ -61,15 +64,17 @@ class GPIOValveController:
             GPIO.setmode(GPIO.BCM)
 
             # Valve select outputs.
-            GPIO.setup(self.PURGE_PIN, GPIO.OUT, initial=GPIO.LOW)
-            GPIO.setup(self.MAINTAIN_PIN, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(self.DIO0_PIN, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(self.DIO1_PIN, GPIO.OUT, initial=GPIO.LOW)
+            GPIO.setup(self.DIO2_PIN, GPIO.OUT, initial=GPIO.LOW)
             GPIO.setup(self.DIO3_PIN, GPIO.OUT, initial=GPIO.LOW)
-            GPIO.setup(self.DIO4_PIN, GPIO.OUT, initial=GPIO.LOW)
 
             # Shared PWM output to the MOSFET board.
-            GPIO.setup(self.PWM_PIN, GPIO.OUT, initial=GPIO.LOW)
-            self._pwm = GPIO.PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ)
-            self._pwm.start(0)
+            self.pi = pigpio.pi()
+            if not self.pi.connected:
+                raise Exception("pigpiod daemon not running")
+            
+            self.pi.hardware_PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ, 0)
 
             # Physical E-stop is active-low according to the wiring notes.
             GPIO.setup(self.ESTOP_PIN, GPIO.IN, pull_up_down=GPIO.PUD_OFF)
@@ -77,7 +82,7 @@ class GPIOValveController:
             self._initialized = True
             self._log(
                 "GPIO valve controller initialized "
-                f"(purge=GPIO{self.PURGE_PIN}, maintain=GPIO{self.MAINTAIN_PIN}, "
+                f"(dio0=GPIO{self.DIO0_PIN}, dio1=GPIO{self.DIO1_PIN}, "
                 f"pwm=GPIO{self.PWM_PIN}, estop=GPIO{self.ESTOP_PIN})"
             )
         except Exception as exc:
@@ -100,7 +105,7 @@ class GPIOValveController:
             self._log(f"Failed to read hardware E-stop ({exc})")
             return False
 
-    def apply(self, purge_on: bool, steady_on: bool, dio3_on: bool, dio4_on: bool, estop_active: bool) -> None:
+    def apply(self, dio0_on: bool, dio1_on: bool, dio2_on: bool, dio3_on: bool, estop_active: bool) -> None:
         """
         Drive valve-select outputs and shared PWM.
 
@@ -117,7 +122,7 @@ class GPIOValveController:
                 self._force_all_off_locked()
                 return
 
-            new_state = {"purge": purge_on, "steady": steady_on, "dio3": dio3_on, "dio4": dio4_on}
+            new_state = {"dio0": dio0_on, "dio1": dio1_on, "dio2": dio2_on, "dio3": dio3_on}
             any_on = any(new_state.values())
 
             if not any_on:
@@ -131,15 +136,15 @@ class GPIOValveController:
 
             # Update GPIO channels
             try:
-                GPIO.output(self.PURGE_PIN, GPIO.HIGH if purge_on else GPIO.LOW)
-                GPIO.output(self.MAINTAIN_PIN, GPIO.HIGH if steady_on else GPIO.LOW)
+                GPIO.output(self.DIO0_PIN, GPIO.HIGH if dio0_on else GPIO.LOW)
+                GPIO.output(self.DIO1_PIN, GPIO.HIGH if dio1_on else GPIO.LOW)
+                GPIO.output(self.DIO2_PIN, GPIO.HIGH if dio2_on else GPIO.LOW)
                 GPIO.output(self.DIO3_PIN, GPIO.HIGH if dio3_on else GPIO.LOW)
-                GPIO.output(self.DIO4_PIN, GPIO.HIGH if dio4_on else GPIO.LOW)
 
                 if turned_on:
                     # Apply 100% kick
-                    self._pwm.ChangeDutyCycle(self.KICK_DUTY)
-                    self._log(f"Valve transition (Turn ON) -> kick {self.KICK_DUTY}% for {int(self.KICK_TIME_S * 1000)} ms")
+                    self.pi.hardware_PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ, self.KICK_DUTY)
+                    self._log(f"Valve transition (Turn ON) -> kick 100% for {int(self.KICK_TIME_S * 1000)} ms")
 
                     # Cancel any existing timer
                     if self._pwm_timer is not None:
@@ -160,7 +165,7 @@ class GPIOValveController:
             if not any(self._last_valves.values()):
                 return
             try:
-                self._pwm.ChangeDutyCycle(self.HOLD_DUTY)
+                self.pi.hardware_PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ, self.HOLD_DUTY)
             except Exception as exc:
                 self._log(f"PWM hold update failed ({exc})")
 
@@ -174,12 +179,13 @@ class GPIOValveController:
             pass
 
         try:
-            GPIO.output(self.PURGE_PIN, GPIO.LOW)
-            GPIO.output(self.MAINTAIN_PIN, GPIO.LOW)
+            GPIO.output(self.DIO0_PIN, GPIO.LOW)
+            GPIO.output(self.DIO1_PIN, GPIO.LOW)
+            GPIO.output(self.DIO2_PIN, GPIO.LOW)
             GPIO.output(self.DIO3_PIN, GPIO.LOW)
-            GPIO.output(self.DIO4_PIN, GPIO.LOW)
-            self._pwm.ChangeDutyCycle(0)
-            self._last_valves = {"purge": False, "steady": False, "dio3": False, "dio4": False}
+            if self.pi is not None and self.pi.connected:
+                self.pi.hardware_PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ, 0)
+            self._last_valves = {"dio0": False, "dio1": False, "dio2": False, "dio3": False}
         except Exception as exc:
             self._log(f"Failed to force valve outputs off ({exc})")
 
@@ -196,13 +202,14 @@ class GPIOValveController:
             return
         self._force_all_off()
         try:
-            if self._pwm is not None:
-                self._pwm.stop()
+            if self.pi is not None and self.pi.connected:
+                self.pi.hardware_PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ, 0)
+                self.pi.stop()
         except Exception as exc:
-            self._log(f"GPIO shutdown warning ({exc})")
+            self._log(f"pigpio shutdown warning ({exc})")
         finally:
             try:
-                GPIO.cleanup([self.PURGE_PIN, self.MAINTAIN_PIN, self.DIO3_PIN, self.DIO4_PIN, self.PWM_PIN, self.ESTOP_PIN])
+                GPIO.cleanup([self.DIO0_PIN, self.DIO1_PIN, self.DIO2_PIN, self.DIO3_PIN, self.ESTOP_PIN])
             except Exception:
                 pass
             self._initialized = False

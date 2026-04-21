@@ -1,5 +1,7 @@
 
 Run:
+sudo systemctl enable pigpiod
+sudo systemctl start pigpiod
 py server.py
 
 Open:

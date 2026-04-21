@@ -16,15 +16,16 @@ function fmt(n, dp = 2) {
 
 function setMode(mode) {
     state.mode = mode;
-    $("tabAuto").classList.toggle("active", mode === "auto");
+    const isAutoTab = mode === "auto" || mode === "standby";
+    $("tabAuto").classList.toggle("active", isAutoTab);
     $("tabManual").classList.toggle("active", mode === "manual");
-    $("autoArea").classList.toggle("hidden", mode !== "auto");
+    $("autoArea").classList.toggle("hidden", !isAutoTab);
     $("manualArea").classList.toggle("hidden", mode !== "manual");
 }
 
 function applyPathUI(valves) {
-    $("pathPurge").className = "pathBtn" + (valves.purge ? " active-purge" : "");
-    $("pathSteady").className = "pathBtn" + (valves.steady ? " active-steady" : "");
+    $("pathPurge").className = "pathBtn" + (valves.dio0 ? " active-purge" : "");
+    $("pathSteady").className = "pathBtn" + (valves.dio1 ? " active-steady" : "");
 }
 
 function applyStartStop(running) {
@@ -43,10 +44,10 @@ function applyStatusBar(fault, estop, ts, text, lastSeen) {
 function updateDio(v, estop, fault) {
     const isFault = estop || fault;
     const getClass = (isOn) => isFault ? "dio fault" : (isOn ? "dio on" : "dio");
-    $("dio1").className = getClass(v.purge);
-    $("dio2").className = getClass(v.steady);
+    $("dio0").className = getClass(v.dio0);
+    $("dio1").className = getClass(v.dio1);
+    $("dio2").className = getClass(v.dio2);
     $("dio3").className = getClass(v.dio3);
-    $("dio4").className = getClass(v.dio4);
 }
 
 function updateReadings(m) {
@@ -186,7 +187,7 @@ async function refreshState() {
     
     setMode(data.mode);
     applyPathUI(data.valves);
-    applyStartStop(data.auto_running);
+    applyStartStop(data.mode === "auto");
     updateReadings(data.metrics);
     updateDio(data.valves, data.estop, data.fault);
     applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.last_seen_str);
@@ -239,10 +240,10 @@ async function init() {
     setupPress("setDown", -.1);
     
     $("startStopBtn").onclick = () => post("toggle_auto_running").then(refreshState);
-    $("togglePurgeBtn").onclick = () => post("toggle_valve", { valve: "purge" }).then(refreshState);
-    $("toggleSteadyBtn").onclick = () => post("toggle_valve", { valve: "steady" }).then(refreshState);
+    $("toggleDio0Btn").onclick = () => post("toggle_valve", { valve: "dio0" }).then(refreshState);
+    $("toggleDio1Btn").onclick = () => post("toggle_valve", { valve: "dio1" }).then(refreshState);
+    $("toggleDio2Btn").onclick = () => post("toggle_valve", { valve: "dio2" }).then(refreshState);
     $("toggleDio3Btn").onclick = () => post("toggle_valve", { valve: "dio3" }).then(refreshState);
-    $("toggleDio4Btn").onclick = () => post("toggle_valve", { valve: "dio4" }).then(refreshState);
     
     document.querySelectorAll(".metricTab").forEach(btn => btn.onclick = () => {
         document.querySelectorAll(".metricTab").forEach(b => b.classList.remove("active"));
