@@ -204,6 +204,8 @@ def luminox_read_line(ser: serial.Serial) -> dict:
     Without this, the poll thread accumulates ~110 ms of backlog per cycle
     (≈6+ minutes after an hour of running).
     """
+    if ser is None:
+        return {"error": "LOX sensor disconnected"}
     try:
         # Discard any lines already sitting in the OS UART buffer.
         # The LuminOx streams at 1 Hz; old lines are stale by definition.

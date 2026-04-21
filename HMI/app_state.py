@@ -26,7 +26,11 @@ class RuntimeState:
         os.makedirs(self._csv_folder, exist_ok=True)
         self._current_date_str = None
         self._csv_buffer = []
-        self.sensor_backend = create_sensor_backend(self.state.valves, self.log)
+        try:
+            self.sensor_backend = create_sensor_backend(self.log)
+        except Exception as exc:
+            self.sensor_backend = None
+            self.log(f"Sensor backend init failed: {exc}")
         self._lan_ip = self._get_lan_ip()
         self.gpio = GPIOValveController(self.log)
         self.gpio.initialize()
@@ -168,18 +172,21 @@ class RuntimeState:
         """Called from LuminOxThread. Blocks on readline() ~1 Hz.
         Updates O2/ppO2/pressure, drives control loop, appends history.
         """
+        if self.sensor_backend is None:
+            with self.lock:
+                self._lox_fault_messages = ["LOX: sensor backend not initialized"]
+                self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
+                self._refresh_status_strings()
+            time.sleep(1.0)
+            return
         try:
             result = self.sensor_backend.read_lox(self.log)
-        except Exception:
-            try:
-                self.sensor_backend = create_sensor_backend(self.state.valves, self.log)
-                result = self.sensor_backend.read_lox(self.log)
-            except Exception as inner_exc:
-                with self.lock:
-                    self._lox_fault_messages = [f"LOX: {inner_exc}"]
-                    self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
-                    self._refresh_status_strings()
-                return
+        except Exception as exc:
+            with self.lock:
+                self._lox_fault_messages = [f"LOX: {exc}"]
+                self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
+                self._refresh_status_strings()
+            return
         now = time.time()
         with self.lock:
             self.state.metrics.o2_pct = result.o2_pct
@@ -222,9 +229,13 @@ class RuntimeState:
         self._append_csv_row(now, csv_snap)
 
     def step_i2c(self, read_sht: bool = False):
-        """Called from I2CThread at ~5 Hz. Patches only flow/temp/rh on metrics.
-        Does NOT own backend reinitialisation—that belongs to step_lox().
-        """
+        """Called from I2CThread at ~5 Hz. Patches only flow/temp/rh on metrics."""
+        if self.sensor_backend is None:
+            with self.lock:
+                self._i2c_fault_messages = ["I2C: sensor backend not initialized"]
+                self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
+                self._refresh_status_strings()
+            return
         try:
             result = self.sensor_backend.read_i2c(self.log, read_sht=read_sht)
         except Exception as exc:
@@ -263,7 +274,8 @@ class RuntimeState:
     def shutdown(self):
         self.log("Shutting down runtime")
         self._flush_csv_buffer()
-        self.sensor_backend.shutdown(self.log)
+        if self.sensor_backend is not None:
+            self.sensor_backend.shutdown(self.log)
         self.gpio.shutdown()
 
     def handle_command(self, action, data):
@@ -326,7 +338,7 @@ class RuntimeState:
                 "estop":          s.estop,
                 "fault":          s.fault,
                 "fault_message":  s.fault_message,
-                "connected":      self.sensor_backend.is_connected,
+                "connected":      self.sensor_backend.is_connected if self.sensor_backend else False,
                 "locked_controls":s.locked_controls,
                 "dimmed":         s.dimmed,
                 "timestamp_str":  s.timestamp_str,
@@ -335,7 +347,7 @@ class RuntimeState:
                 "metrics":        s.metrics.to_dict(),
                 "console_text":   "\n".join(self.console_lines[-120:]),
                 "csv_url":        f"http://{self._lan_ip}:8000/telemetry/",
-                "sensor_backend": self.sensor_backend.backend_name,
+                "sensor_backend": self.sensor_backend.backend_name if self.sensor_backend else "none",
             }
             history_snap = list(s.history)   # shallow copy — O(n) but no allocation per item
         # Expensive: filter + asdict on up to 90,000 points — done without the lock

@@ -1,5 +1,5 @@
 
-import importlib.util, math, os, time
+import importlib.util, os, time
 from dataclasses import dataclass
 from typing import List, Optional
 from models import TelemetryData
@@ -8,15 +8,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_PATH = os.path.join(BASE_DIR, "test.py")
 
 def load_test_module():
-    try:
-        spec = importlib.util.spec_from_file_location("sensor_test_module", TEST_PATH)
-        if spec is None or spec.loader is None:
-            raise RuntimeError("Could not create module spec for test.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module, None
-    except Exception as exc:
-        return None, exc
+    spec = importlib.util.spec_from_file_location("sensor_test_module", TEST_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load test.py from {TEST_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 @dataclass
 class BackendLoxResult:
@@ -43,43 +40,6 @@ class SensorBackend:
     def is_connected(self): raise NotImplementedError
     @property
     def backend_name(self): raise NotImplementedError
-
-class SimulatedSensorBackend(SensorBackend):
-    def __init__(self, valve_state):
-        self._valve_state = valve_state
-
-    def initialize(self, log): log("Simulation backend active")
-
-    def read_lox(self, log) -> BackendLoxResult:
-        """Simulates the 1 Hz UART stream by sleeping 1 s."""
-        time.sleep(1.0)
-        t = time.time()
-        o2 = max(0.1, 2.2 + 0.6 * math.sin(t / 18.0)
-                      - (0.8 if self._valve_state.purge else 0)
-                      - (0.3 if self._valve_state.steady else 0))
-        return BackendLoxResult(
-            o2_pct=round(o2, 2),
-            ppo2_mbar=round(max(0, o2 / 100.0 * 1013), 1),
-            pressure_mbar=round(1013 + 4 * math.sin(t / 30.0), 2),
-            fault_messages=[],
-        )
-
-    def read_i2c(self, log, read_sht: bool = False) -> BackendI2cResult:
-        """Returns immediately — the I2C thread's deadline scheduler controls pacing."""
-        t = time.time()
-        flow = (5.5 if self._valve_state.purge else 0.0) + (0.7 if self._valve_state.steady else 0.0)
-        return BackendI2cResult(
-            flow_slm=round(flow, 2),
-            temp_c=round(24 + 1.0 * math.sin(t / 40.0), 2) if read_sht else None,
-            rh_pct=round(48 + 8 * math.sin(t / 55.0), 2) if read_sht else None,
-            fault_messages=[],
-        )
-
-    def shutdown(self, log): log("Simulation backend shutdown")
-    @property
-    def is_connected(self): return False
-    @property
-    def backend_name(self): return "sim"
 
 class TestPySensorBackend(SensorBackend):
     def __init__(self, test_mod):
@@ -178,19 +138,13 @@ class TestPySensorBackend(SensorBackend):
     @property
     def backend_name(self): return "test.py"
 
-def create_sensor_backend(valve_state, log):
-    test_mod, test_mod_error = load_test_module()
-    if test_mod is None:
-        log(f"test.py unavailable on this system; using simulation ({test_mod_error})")
-        backend = SimulatedSensorBackend(valve_state)
-        backend.initialize(log)
-        return backend
-    try:
-        backend = TestPySensorBackend(test_mod)
-        backend.initialize(log)
-        return backend
-    except Exception as exc:
-        log(f"Sensor backend unavailable; using simulation ({exc})")
-        backend = SimulatedSensorBackend(valve_state)
-        backend.initialize(log)
-        return backend
+def create_sensor_backend(log):
+    """Create and initialise the hardware sensor backend.
+
+    Raises on failure — callers must fault-log rather than silently falling
+    back to simulated data.
+    """
+    test_mod = load_test_module()
+    backend = TestPySensorBackend(test_mod)
+    backend.initialize(log)
+    return backend
