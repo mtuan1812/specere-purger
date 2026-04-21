@@ -177,6 +177,7 @@ class RuntimeState:
                 self._lox_fault_messages = ["LOX: sensor backend not initialized"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
+                self.state.console_text = "\n".join(self.console_lines[-120:])
             time.sleep(1.0)
             return
         try:
@@ -186,6 +187,7 @@ class RuntimeState:
                 self._lox_fault_messages = [f"LOX: {exc}"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
+                self.state.console_text = "\n".join(self.console_lines[-120:])
             return
         now = time.time()
         with self.lock:
@@ -235,6 +237,7 @@ class RuntimeState:
                 self._i2c_fault_messages = ["I2C: sensor backend not initialized"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
+                self.state.console_text = "\n".join(self.console_lines[-120:])
             return
         try:
             result = self.sensor_backend.read_i2c(self.log, read_sht=read_sht)
@@ -243,6 +246,7 @@ class RuntimeState:
                 self._i2c_fault_messages = [f"I2C: {exc}"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
+                self.state.console_text = "\n".join(self.console_lines[-120:])
             return
         with self.lock:
             self.state.metrics.flow_slm = result.flow_slm
