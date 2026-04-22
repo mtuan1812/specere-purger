@@ -22,7 +22,6 @@ class RuntimeState:
         self._last_seen_epoch = None
         self._lox_fault_messages: list = []
         self._i2c_fault_messages: list = []
-        self._last_fault_message: str = ""
         self._csv_folder = os.path.join(BASE_DIR, "telemetry")
         os.makedirs(self._csv_folder, exist_ok=True)
         self._current_date_str = None
@@ -130,13 +129,6 @@ class RuntimeState:
         else:
             self.state.fault = False
             self.state.fault_message = ""
-        # Log whenever the fault state changes so it appears in the console.
-        if self.state.fault_message != self._last_fault_message:
-            if self.state.fault_message:
-                self.log(f"FAULT: {self.state.fault_message}")
-            else:
-                self.log("Fault cleared — system normal")
-            self._last_fault_message = self.state.fault_message
 
     def _apply_auto_mode_logic(self):
         """Handle auto-mode state machine transitions."""
@@ -158,16 +150,15 @@ class RuntimeState:
                 self.state.mode = "standby"
                 self.log("Auto mode: O2 sensor timeout — entering standby, valves off")
             return
-        if o2 > self.state.target_o2 + HYSTERESIS_PCT:
+        if o2 >= self.state.target_o2 + HYSTERESIS_PCT:
+            # O2 above setpoint + hysteresis — purge (dio0 on, dio1 off)
             self.state.valves.dio0 = True
             self.state.valves.dio1 = False
-        elif o2 < self.state.target_o2 - HYSTERESIS_PCT:
+        elif o2 <= self.state.target_o2 - HYSTERESIS_PCT:
+            # O2 below setpoint - hysteresis — steady (dio0 off, dio1 on)
             self.state.valves.dio0 = False
             self.state.valves.dio1 = True
-        else:
-            # inside hysteresis band: turn both valves off
-            self.state.valves.dio0 = False
-            self.state.valves.dio1 = False
+        # else: within hysteresis band — hold current valve state (one always on)
 
     def _refresh_status_strings(self):
         self.state.timestamp_str = self._format_timestamp_now()
@@ -185,7 +176,6 @@ class RuntimeState:
                 self._lox_fault_messages = ["LOX: sensor backend not initialized"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-                self.state.console_text = "\n".join(self.console_lines[-120:])
             time.sleep(1.0)
             return
         try:
@@ -195,7 +185,6 @@ class RuntimeState:
                 self._lox_fault_messages = [f"LOX: {exc}"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-                self.state.console_text = "\n".join(self.console_lines[-120:])
             return
         now = time.time()
         with self.lock:
@@ -245,7 +234,6 @@ class RuntimeState:
                 self._i2c_fault_messages = ["I2C: sensor backend not initialized"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-                self.state.console_text = "\n".join(self.console_lines[-120:])
             return
         try:
             result = self.sensor_backend.read_i2c(self.log, read_sht=read_sht)
@@ -254,7 +242,6 @@ class RuntimeState:
                 self._i2c_fault_messages = [f"I2C: {exc}"]
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-                self.state.console_text = "\n".join(self.console_lines[-120:])
             return
         with self.lock:
             self.state.metrics.flow_slm = result.flow_slm
@@ -271,17 +258,9 @@ class RuntimeState:
         with self.lock:
             if estop != self.state.estop:
                 self.state.estop = estop
-                if estop:
-                    # E-stop asserted: reset to safe state
-                    self.state.mode = "standby"
-                    self.state.valves.all_off()
-                    self.log("E-stop asserted — mode reset to standby, all valves off")
-                else:
-                    self.log("E-stop released")
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-                self.state.console_text = "\n".join(self.console_lines[-120:])
-
+            
             # Apply states. If estop is True, gpio_controller forces all to 0 hardware-wise
             self.gpio.apply(
                 dio0_on=self.state.valves.dio0,
@@ -312,10 +291,19 @@ class RuntimeState:
             elif action == "toggle_auto_running":
                 if self.state.mode == "auto":
                     self.state.mode = "standby"
+                    self.state.valves.all_off()
                 elif self.state.mode == "standby":
                     self.state.mode = "auto"
-                if self.state.mode != "auto":
-                    self.state.valves.all_off()
+                    # Pick initial valve immediately so one is always on from the start.
+                    o2 = self.state.metrics.o2_pct
+                    if o2 is None or o2 >= self.state.target_o2:
+                        # O2 at/above target (or unknown) — start purging
+                        self.state.valves.dio0 = True
+                        self.state.valves.dio1 = False
+                    else:
+                        # O2 below target — start steady
+                        self.state.valves.dio0 = False
+                        self.state.valves.dio1 = True
             elif action == "toggle_valve":
                 if not self.state.locked_controls and not self.state.estop:
                     valve = data.get("valve")
