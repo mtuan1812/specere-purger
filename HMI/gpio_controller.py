@@ -144,7 +144,6 @@ class GPIOValveController:
                 if turned_on:
                     # Apply 100% kick
                     self.pi.hardware_PWM(self.PWM_PIN, self.PWM_FREQUENCY_HZ, self.KICK_DUTY)
-                    self._log(f"Valve transition (Turn ON) -> kick 100% for {int(self.KICK_TIME_S * 1000)} ms")
 
                     # Cancel any existing timer
                     if self._pwm_timer is not None:
