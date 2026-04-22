@@ -1,14 +1,15 @@
-
 <!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=800,height=480,initial-scale=1,user-scalable=no"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=800,height=480,initial-scale=1,user-scalable=no" />
   <title>Enclosure Controller</title>
-  <link rel="stylesheet" href="styles.css"/>
-  <script>window.SHOW_PLOT=true;</script>
+  <link rel="stylesheet" href="styles.css" />
+  <script>window.SHOW_PLOT = true;</script>
   <script defer src="app.js"></script>
 </head>
+
 <body>
   <div id="app">
     <div class="topbar">
@@ -18,15 +19,28 @@
       </div>
       <div class="brandWrap">
         <div id="brandAsset">
-          <img src="specere_logo.png" alt="Specere" onerror="this.parentNode.innerHTML='<div class=&quot;brandFallback&quot;>Specere</div>';">
+          <img src="specere_logo.png" alt="Specere"
+            onerror="this.parentNode.innerHTML='<div class=&quot;brandFallback&quot;>Specere</div>';">
         </div>
         <div class="brandText">Enclosure<br>controller</div>
       </div>
       <div class="iconRow">
-        <button id="btnEstop" class="iconBtn" title="Quit program"><svg viewBox="0 0 24 24"><path d="M12 2v10"/><path d="M6.3 5.8A9 9 0 1 0 17.7 5.8"/></svg></button>
-        <button id="btnReset" class="iconBtn" title="Reboot System"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 4v6h6"/></svg></button>
-        <button id="btnDim" class="iconBtn" title="Dim"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></button>
-        <button id="btnLock" class="iconBtn" title="Lock controls"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V8a4 4 0 1 1 8 0v3"/><path d="M12 15v3"/></svg></button>
+        <button id="btnEstop" class="iconBtn" title="Quit program"><svg viewBox="0 0 24 24">
+            <path d="M12 2v10" />
+            <path d="M6.3 5.8A9 9 0 1 0 17.7 5.8" />
+          </svg></button>
+        <button id="btnReset" class="iconBtn" title="Reboot System"><svg viewBox="0 0 24 24">
+            <path d="M3 12a9 9 0 1 0 2.64-6.36" />
+            <path d="M3 4v6h6" />
+          </svg></button>
+        <button id="btnDim" class="iconBtn" title="Dim"><svg viewBox="0 0 24 24">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
+          </svg></button>
+        <button id="btnLock" class="iconBtn" title="Lock controls"><svg viewBox="0 0 24 24">
+            <rect x="5" y="11" width="14" height="10" rx="1" />
+            <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+            <path d="M12 15v3" />
+          </svg></button>
       </div>
     </div>
 
@@ -55,16 +69,33 @@
         </div>
 
         <div class="infoGrid">
-          <div class="infoCell"><div class="infoLabel">Oxygen (O2)</div><div id="valO2" class="infoValue">XX.XX %</div></div>
-          <div class="infoCell"><div class="infoLabel">Airflow (FM)</div><div id="valFlow" class="infoValue">XX.XX slm</div></div>
-          <div class="infoCell"><div class="infoLabel">Pressure (P)</div><div id="valPressure" class="infoValue">xxxx.xx mbar</div></div>
-          <div class="infoCell"><div class="infoLabel">Temperature (T)</div><div id="valTemp" class="infoValue">xx.xx °C</div></div>
-          <div class="infoCell"><div class="infoLabel">Humidity (RH)</div><div id="valRh" class="infoValue">xx.xx %</div></div>
+          <div class="infoCell">
+            <div class="infoLabel">Oxygen (O2)</div>
+            <div id="valO2" class="infoValue">XX.XX %</div>
+          </div>
+          <div class="infoCell">
+            <div class="infoLabel">Airflow (FM)</div>
+            <div id="valFlow" class="infoValue">XX.XX slm</div>
+          </div>
+          <div class="infoCell">
+            <div class="infoLabel">Pressure (P)</div>
+            <div id="valPressure" class="infoValue">xxxx.xx mbar</div>
+          </div>
+          <div class="infoCell">
+            <div class="infoLabel">Temperature (T)</div>
+            <div id="valTemp" class="infoValue">xx.xx °C</div>
+          </div>
+          <div class="infoCell">
+            <div class="infoLabel">Humidity (RH)</div>
+            <div id="valRh" class="infoValue">xx.xx %</div>
+          </div>
           <div class="infoCell">
             <div class="infoLabel">DIO</div>
             <div class="dioWrap">
-              <div id="dio0" class="dio">0</div><div id="dio1" class="dio">1</div>
-              <div id="dio2" class="dio">2</div><div id="dio3" class="dio">3</div>
+              <div id="dio0" class="dio">0</div>
+              <div id="dio1" class="dio">1</div>
+              <div id="dio2" class="dio">2</div>
+              <div id="dio3" class="dio">3</div>
             </div>
           </div>
         </div>
@@ -79,11 +110,11 @@
 
       <div class="rightPanel">
         <div class="metricTabs">
-          <button class="metricTab" data-metric="o2">Oxygen (O2)</button>
-          <button class="metricTab active" data-metric="flow">Airflow (FM)</button>
-          <button class="metricTab" data-metric="pressure">Pressure (P)</button>
-          <button class="metricTab" data-metric="temp">Temperature (T)</button>
-          <button class="metricTab" data-metric="rh">Humidity (RH)</button>
+          <button class="metricTab" data-metric="o2">O2</button>
+          <button class="metricTab active" data-metric="flow">FM</button>
+          <button class="metricTab" data-metric="pressure">P</button>
+          <button class="metricTab" data-metric="temp">T</button>
+          <button class="metricTab" data-metric="rh">RH</button>
         </div>
         <div class="rangeTabs">
           <button class="rangeTab" data-range="120">2min</button>
@@ -118,11 +149,12 @@
   <div id="qrModal" class="modalBack hidden">
     <div class="modal">
       <div class="modalTitle">Local CSV URL</div>
-      <img id="qrImage" class="qrImage" alt="CSV URL card"/>
+      <img id="qrImage" class="qrImage" alt="CSV URL card" />
       <div id="csvUrlText" class="note"></div>
       <div class="note">must be connected to PAL3.0 or eduroam</div>
       <div class="modalActions"><button id="closeQr" class="modalBtn">Close</button></div>
     </div>
   </div>
 </body>
+
 </html>
