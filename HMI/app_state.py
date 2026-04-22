@@ -8,7 +8,7 @@ from gpio_controller import GPIOValveController
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "telemetry.csv")
 
-HYSTERESIS_PCT = 0.5
+HYSTERESIS_PCT = 0.25
 O2_WATCHDOG_TIMEOUT_S = 10  # seconds without valid O2 before auto-mode safe-stops
 
 class RuntimeState:
