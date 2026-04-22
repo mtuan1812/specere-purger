@@ -39,7 +39,8 @@ class HistoryPoint:
     o2: Optional[float]
     flow: Optional[float]
     pressure: Optional[float]
-    ppo2: Optional[float]
+    temp: Optional[float]
+    rh: Optional[float]
     def to_dict(self) -> Dict[str, Optional[float]]:
         return asdict(self)
 

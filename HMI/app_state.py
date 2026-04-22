@@ -204,7 +204,8 @@ class RuntimeState:
                 o2=result.o2_pct,
                 flow=self.state.metrics.flow_slm,
                 pressure=result.pressure_mbar,
-                ppo2=result.ppo2_mbar,
+                temp=self.state.metrics.temp_c,
+                rh=self.state.metrics.rh_pct,
             ))
             self.state.history = self.state.history[-90000:]
             self._refresh_status_strings()
