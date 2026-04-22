@@ -258,9 +258,14 @@ class RuntimeState:
         with self.lock:
             if estop != self.state.estop:
                 self.state.estop = estop
+                if estop:
+                    # Hardware E-stop engaged — force standby and close all valves
+                    self.state.mode = "standby"
+                    self.state.valves.all_off()
+                    self.log("E-stop engaged: mode set to standby, all valves closed")
                 self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
                 self._refresh_status_strings()
-            
+
             # Apply states. If estop is True, gpio_controller forces all to 0 hardware-wise
             self.gpio.apply(
                 dio0_on=self.state.valves.dio0,
@@ -312,6 +317,12 @@ class RuntimeState:
                     elif valve == "dio2": self.state.valves.dio2 = not self.state.valves.dio2
                     elif valve == "dio3": self.state.valves.dio3 = not self.state.valves.dio3
             elif action == "toggle_estop":
+                # Force standby and close all valves before shutdown
+                self.state.mode = "standby"
+                self.state.valves.all_off()
+                self.state.estop = True
+                self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
+                self.log("E-stop pressed: mode set to standby, all valves closed")
                 self.log("Executing system shutdown script...")
                 import subprocess
                 subprocess.Popen(["sudo", "sh", os.path.join(BASE_DIR, "stop_hmi.sh")], start_new_session=True)
