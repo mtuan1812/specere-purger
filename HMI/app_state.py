@@ -333,11 +333,13 @@ class RuntimeState:
                 subprocess.Popen(["sudo", "reboot"])
             elif action == "toggle_dim":
                 self.log("Putting display to sleep (wake on touch)...")
-                import subprocess
-                # Use Wayland's wlopm to turn off the display (xset DPMS is unsupported on Wayland).
-                # A touch event will automatically wake it via the Wayfire compositor.
-                env_vars = {"WAYLAND_DISPLAY": "wayland-1", "XDG_RUNTIME_DIR": "/run/user/1000"}
-                subprocess.Popen(["sudo", "-u", "admin", "wlopm", "--off", "*"], env=env_vars, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                # Add a delay so the touch release event doesn't immediately wake the screen
+                def dim_display():
+                    import time
+                    import subprocess
+                    time.sleep(0.5)
+                    subprocess.Popen([os.path.join(BASE_DIR, "screen_manager.sh"), "dim"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                threading.Thread(target=dim_display, daemon=True).start()
             elif action == "toggle_lock":
                 self.state.locked_controls = not self.state.locked_controls
             self._refresh_status_strings()
