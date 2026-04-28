@@ -87,6 +87,24 @@ chmod +x "$DESKTOP_FILE"
 sudo chown "$USER_NAME:$USER_NAME" "$DESKTOP_FILE"
 gio set "$DESKTOP_FILE" metadata::trusted true
 
+CONFIG="$HOME_DIR/.config/pcmanfm/LXDE-pi/pcmanfm.conf"
+echo "Configuring PCManFM to skip execute prompt..."
+sudo -u "$USER_NAME" mkdir -p "$(dirname "$CONFIG")"
+
+if [ -f "$CONFIG" ]; then
+    if grep -q "^quick_exec=" "$CONFIG"; then
+        sudo sed -i 's/^quick_exec=.*/quick_exec=1/' "$CONFIG"
+    else
+        sudo sed -i '/^\[config\]/a quick_exec=1' "$CONFIG"
+    fi
+else
+    cat > "$CONFIG" <<EOF
+[config]
+quick_exec=1
+EOF
+fi
+sudo chown "$USER_NAME:$USER_NAME" "$CONFIG"
+
 echo "Setup complete! Rebooting..."
 
 sudo reboot
