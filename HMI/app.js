@@ -33,12 +33,11 @@ function applyStartStop(running) {
     $("startStopBtn").classList.toggle("is-start", !running);
 }
 
-function applyStatusBar(fault, estop, ts, text, lastSeen, uptime) {
+function applyStatusBar(fault, estop, ts, text, uptime) {
     const red = !!fault || !!estop;
     $("statusBar").classList.toggle("fault", red);
     $("statusTime").textContent = ts || "--";
     $("statusText").textContent = text || (red ? "System Fault ↗" : "System Normal ↗");
-    $("lastSeenText").textContent = `Data last seen: ${lastSeen || "--"}`;
     if ($("uptimeText")) $("uptimeText").textContent = `Uptime: ${uptime || "--"}`;
 }
 
@@ -191,7 +190,16 @@ async function refreshState() {
     applyStartStop(data.mode === "auto");
     updateReadings(data.metrics);
     updateDio(data.valves, data.estop);
-    applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.last_seen_str, data.uptime_str);
+    applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.uptime_str);
+    
+    let staleness = data.staleness_sec;
+    let dot = $("stalenessDot");
+    if (dot) {
+        dot.className = "stalenessDot";
+        if (staleness === null || staleness > 10) dot.classList.add("red");
+        else if (staleness > 3) dot.classList.add("amber");
+        else dot.classList.add("green");
+    }
     
     $("setValue").textContent = fmt(data.target_o2, 1);
     $("btnEstop").classList.toggle("estop", data.estop);

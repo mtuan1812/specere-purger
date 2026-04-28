@@ -383,6 +383,7 @@ class RuntimeState:
                 "dimmed":         s.dimmed,
                 "timestamp_str":  s.timestamp_str,
                 "last_seen_str":  s.last_seen_str,
+                "staleness_sec":  time.time() - self._last_seen_epoch if self._last_seen_epoch else None,
                 "uptime_str":     s.uptime_str,
                 "system_status":  s.system_status,
                 "metrics":        s.metrics.to_dict(),
