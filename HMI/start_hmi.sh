@@ -52,6 +52,6 @@ runuser -u admin -- env WAYLAND_DISPLAY=wayland-1 XDG_RUNTIME_DIR=/run/user/1000
 echo "Screen manager launched."
 
 echo "HMI initialization complete! System is running."
-echo "Terminal will automatically close in 3 seconds..."
+
 sleep 3
 exit 0
