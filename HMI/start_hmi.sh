@@ -53,5 +53,5 @@ echo "Screen manager launched."
 
 echo "HMI initialization complete! System is running."
 
-sleep 3
+sleep 20
 exit 0
