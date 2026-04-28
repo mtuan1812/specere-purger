@@ -46,6 +46,9 @@ fi
 
 sudo chown -R "$USER_NAME:$USER_NAME" "$REPO_DIR"
 
+echo "Making scripts executable..."
+find "$REPO_DIR" -type f -name "*.sh" -exec chmod +x {} \;
+
 echo "Updating Raspberry Pi boot config..."
 if [ -f "$CONFIG_FILE" ]; then
     sudo cp "$CONFIG_FILE" "$CONFIG_FILE.backup.$(date +%Y%m%d_%H%M%S)"
@@ -84,5 +87,5 @@ chmod +x "$DESKTOP_FILE"
 sudo chown "$USER_NAME:$USER_NAME" "$DESKTOP_FILE"
 
 echo "Setup complete!"
-echo "Please restart the Raspberry Pi to apply the new boot configuration."
-echo "Run: sudo reboot"
+
+sudo reboot
