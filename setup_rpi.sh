@@ -25,7 +25,7 @@ sudo apt install -y \
   python3-qrcode \
   evtest \
   swayidle \
-  chromium-browser \
+  chromium \
   python3-pip
 
 echo "Installing pip packages..."
