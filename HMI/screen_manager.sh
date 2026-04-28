@@ -25,7 +25,7 @@ fi
 
 SCRIPT_PATH="$(realpath "$0")"
 
-export WAYLAND_DISPLAY="wayland-1"
+export WAYLAND_DISPLAY="wayland-0"
 export XDG_RUNTIME_DIR="/run/user/1000"
 
 killall swayidle 2>/dev/null
