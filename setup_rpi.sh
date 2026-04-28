@@ -85,18 +85,7 @@ EOF
 
 chmod +x "$DESKTOP_FILE"
 sudo chown "$USER_NAME:$USER_NAME" "$DESKTOP_FILE"
-gio set "$DESKTOP_FILE" metadata::trusted true 2>/dev/null || true
 
-echo "Configuring file manager to skip execute prompt..."
-mkdir -p "$HOME_DIR/.config/pcmanfm/LXDE-pi"
-if [ -f "$HOME_DIR/.config/pcmanfm/LXDE-pi/pcmanfm.conf" ]; then
-    sudo sed -i 's/^executable_options=.*/executable_options=0/' "$HOME_DIR/.config/pcmanfm/LXDE-pi/pcmanfm.conf"
-else
-    echo "[vfs]" > "$HOME_DIR/.config/pcmanfm/LXDE-pi/pcmanfm.conf"
-    echo "executable_options=0" >> "$HOME_DIR/.config/pcmanfm/LXDE-pi/pcmanfm.conf"
-fi
-sudo chown -R "$USER_NAME:$USER_NAME" "$HOME_DIR/.config/pcmanfm"
-
-echo "Setup complete! Rebooting"
+echo "Setup complete!"
 
 sudo reboot
