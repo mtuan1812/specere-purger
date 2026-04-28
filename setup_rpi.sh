@@ -77,15 +77,15 @@ DESKTOP_FILE="$HOME_DIR/Desktop/startup.desktop"
 cat > "$DESKTOP_FILE" <<'EOF'
 [Desktop Entry]
 Name=HMI Start
-Exec=bash -c 'sudo /home/admin/Git/specere-purger/HMI/start_hmi.sh || { echo -n "FAILED — press any key to close..."; read -n 1 -s; }'
+Exec=lxterminal -e bash -c 'sudo /home/admin/Git/specere-purger/HMI/start_hmi.sh && exit; echo -n "FAILED — press any key to close..."; read -n 1 -s'
 Icon=utilities-system-monitor
-Terminal=true
+Terminal=false
 Type=Application
 EOF
 
 chmod +x "$DESKTOP_FILE"
 sudo chown "$USER_NAME:$USER_NAME" "$DESKTOP_FILE"
 
-echo "Setup complete! Rebooting"
+echo "Setup complete! Rebooting..."
 
 sudo reboot
