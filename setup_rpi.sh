@@ -86,6 +86,6 @@ EOF
 chmod +x "$DESKTOP_FILE"
 sudo chown "$USER_NAME:$USER_NAME" "$DESKTOP_FILE"
 
-echo "Setup complete!"
+echo "Setup complete! Rebooting"
 
 sudo reboot
