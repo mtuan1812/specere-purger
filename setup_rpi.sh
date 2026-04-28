@@ -97,6 +97,6 @@ else
 fi
 sudo chown -R "$USER_NAME:$USER_NAME" "$HOME_DIR/.config/pcmanfm"
 
-echo "Setup complete!"
+echo "Setup complete! Rebooting"
 
 sudo reboot
