@@ -32,5 +32,5 @@ killall swayidle 2>/dev/null
 
 echo "Starting swayidle..."
 exec swayidle -w \
-    timeout 300 "$SCRIPT_PATH dim" \
+    timeout 10 "$SCRIPT_PATH dim" \
     resume "echo 0 | sudo tee $BL > /dev/null"
