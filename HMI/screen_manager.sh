@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DEVICE="/dev/input/event4"
-BL="/sys/class/backlight/rpi_backlight/bl_power"
+BL="/sys/class/backlight/10-0045/bl_power"
 
 if [ "$1" == "dim" ]; then
     # Turn off backlight
