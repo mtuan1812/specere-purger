@@ -44,7 +44,7 @@ runuser -u admin -- env DISPLAY=:0 XAUTHORITY=/home/admin/.Xauthority \
     --disable-infobars \
     --disable-session-crashed-bubble \
     --check-for-update-interval=31536000 \
-    http://localhost:8000 &
+    http://localhost:8000 > /dev/null 2>&1 &
 echo "Chromium launched."
 
 echo "Starting Swayidle Screen Manager..."
