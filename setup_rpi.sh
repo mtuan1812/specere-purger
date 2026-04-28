@@ -25,7 +25,11 @@ sudo apt install -y \
   python3-qrcode \
   evtest \
   swayidle \
-  chromium-browser
+  chromium-browser \
+  python3-pip
+
+echo "Installing pip packages..."
+sudo pip3 install rpi-hardware-pwm --break-system-packages
 
 echo "Creating Git directory..."
 mkdir -p "$GIT_DIR"
@@ -59,6 +63,7 @@ dtoverlay=uart5
 enable_uart=1
 dtoverlay=dwc2,dr_mode=peripheral
 dtoverlay=gpio-fan,gpiopin=18,temp=60000
+dtoverlay=pwm-2chan
 # SPECERE PURGER CONFIG END
 EOF
 

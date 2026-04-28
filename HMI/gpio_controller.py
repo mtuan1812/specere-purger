@@ -19,10 +19,16 @@ from __future__ import annotations
 import threading
 
 try:
-    from gpiozero import DigitalOutputDevice, PWMOutputDevice, InputDevice
+    from gpiozero import DigitalOutputDevice, InputDevice
     GPIO_AVAILABLE = True
 except Exception:
     GPIO_AVAILABLE = False
+
+try:
+    from rpi_hardware_pwm import HardwarePWM
+    HW_PWM_AVAILABLE = True
+except Exception:
+    HW_PWM_AVAILABLE = False
 
 
 class GPIOValveController:
@@ -68,8 +74,14 @@ class GPIOValveController:
             self.dio2 = DigitalOutputDevice(self.DIO2_PIN, initial_value=False)
             self.dio3 = DigitalOutputDevice(self.DIO3_PIN, initial_value=False)
 
-            # Shared PWM output to the MOSFET board.
-            self.pwm = PWMOutputDevice(self.PWM_PIN, frequency=self.PWM_FREQUENCY_HZ, initial_value=0.0)
+            # Shared PWM output to the MOSFET board using rpi_hardware_pwm.
+            # pwm_channel=1 typically maps to GPIO 19 or GPIO 13
+            if HW_PWM_AVAILABLE:
+                self.pwm = HardwarePWM(pwm_channel=1, hz=self.PWM_FREQUENCY_HZ)
+                self.pwm.start(0)  # Start at 0% duty cycle
+            else:
+                self._log("rpi_hardware_pwm not available; fallback to DigitalOutput 100% duty on GPIO 19.")
+                self.pwm = DigitalOutputDevice(self.PWM_PIN, initial_value=False)
 
             # Physical E-stop is active-low according to the wiring notes.
             self.estop = InputDevice(self.ESTOP_PIN, pull_up=False)
@@ -138,7 +150,11 @@ class GPIOValveController:
 
                 if turned_on:
                     # Apply 100% kick
-                    self.pwm.value = self.KICK_DUTY
+                    if self.pwm:
+                        if HW_PWM_AVAILABLE:
+                            self.pwm.change_duty_cycle(self.KICK_DUTY * 100.0)
+                        else:
+                            self.pwm.value = True
 
                     # Cancel any existing timer
                     if self._pwm_timer is not None:
@@ -159,7 +175,11 @@ class GPIOValveController:
             if not any(self._last_valves.values()):
                 return
             try:
-                self.pwm.value = self.HOLD_DUTY
+                if self.pwm:
+                    if HW_PWM_AVAILABLE:
+                        self.pwm.change_duty_cycle(self.HOLD_DUTY * 100.0)
+                    else:
+                        self.pwm.value = True
             except Exception as exc:
                 self._log(f"PWM hold update failed ({exc})")
 
@@ -177,7 +197,11 @@ class GPIOValveController:
             if self.dio1: self.dio1.value = False
             if self.dio2: self.dio2.value = False
             if self.dio3: self.dio3.value = False
-            if self.pwm: self.pwm.value = 0.0
+            if self.pwm:
+                if HW_PWM_AVAILABLE:
+                    self.pwm.change_duty_cycle(0.0)
+                else:
+                    self.pwm.value = False
             self._last_valves = {"dio0": False, "dio1": False, "dio2": False, "dio3": False}
         except Exception as exc:
             self._log(f"Failed to force valve outputs off ({exc})")
@@ -195,7 +219,11 @@ class GPIOValveController:
             return
         self._force_all_off()
         try:
-            if self.pwm: self.pwm.close()
+            if self.pwm:
+                if HW_PWM_AVAILABLE:
+                    self.pwm.stop()
+                else:
+                    self.pwm.close()
             if self.dio0: self.dio0.close()
             if self.dio1: self.dio1.close()
             if self.dio2: self.dio2.close()
