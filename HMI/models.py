@@ -58,6 +58,7 @@ class UiState:
     dimmed: bool = False
     timestamp_str: str = "--"
     last_seen_str: str = "--"
+    uptime_str: str = "0s"
     system_status: str = "System Normal ↗"
     metrics: TelemetryData = field(default_factory=TelemetryData)
     history: List[HistoryPoint] = field(default_factory=list)
@@ -86,6 +87,7 @@ class UiState:
             "dimmed": self.dimmed,
             "timestamp_str": self.timestamp_str,
             "last_seen_str": self.last_seen_str,
+            "uptime_str": self.uptime_str,
             "system_status": self.system_status,
             "metrics": self.metrics.to_dict(),
             "history": [point.to_dict() for point in recent],

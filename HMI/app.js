@@ -33,12 +33,13 @@ function applyStartStop(running) {
     $("startStopBtn").classList.toggle("is-start", !running);
 }
 
-function applyStatusBar(fault, estop, ts, text, lastSeen) {
+function applyStatusBar(fault, estop, ts, text, lastSeen, uptime) {
     const red = !!fault || !!estop;
     $("statusBar").classList.toggle("fault", red);
     $("statusTime").textContent = ts || "--";
     $("statusText").textContent = text || (red ? "System Fault ↗" : "System Normal ↗");
     $("lastSeenText").textContent = `Data last seen: ${lastSeen || "--"}`;
+    if ($("uptimeText")) $("uptimeText").textContent = `Uptime: ${uptime || "--"}`;
 }
 
 function updateDio(v, estop) {
@@ -190,7 +191,7 @@ async function refreshState() {
     applyStartStop(data.mode === "auto");
     updateReadings(data.metrics);
     updateDio(data.valves, data.estop);
-    applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.last_seen_str);
+    applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.last_seen_str, data.uptime_str);
     
     $("setValue").textContent = fmt(data.target_o2, 1);
     $("btnEstop").classList.toggle("estop", data.estop);

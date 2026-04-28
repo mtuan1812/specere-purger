@@ -15,6 +15,7 @@ class RuntimeState:
     """Main backend state container used by the web server and poller thread."""
     def __init__(self):
         self.lock = threading.Lock()
+        self._start_time = time.time()
         self._console_lock = threading.Lock()
         self.console_lines = []
         self.state = UiState()
@@ -119,6 +120,21 @@ class RuntimeState:
         try: return datetime.fromtimestamp(epoch).strftime("%-I:%M:%S %p")
         except ValueError: return datetime.fromtimestamp(epoch).strftime("%I:%M:%S %p").lstrip("0")
 
+    @staticmethod
+    def _format_uptime(seconds: float) -> str:
+        s = int(seconds)
+        days, s = divmod(s, 86400)
+        hours, s = divmod(s, 3600)
+        minutes, s = divmod(s, 60)
+        if days > 0:
+            return f"{days}d {hours}h {minutes}m"
+        elif hours > 0:
+            return f"{hours}h {minutes}m {s}s"
+        elif minutes > 0:
+            return f"{minutes}m {s}s"
+        else:
+            return f"{s}s"
+
     def _apply_fault_logic(self, fault_messages):
         all_msgs = list(fault_messages)
         if self.state.estop:
@@ -163,6 +179,7 @@ class RuntimeState:
     def _refresh_status_strings(self):
         self.state.timestamp_str = self._format_timestamp_now()
         self.state.last_seen_str = self._format_last_seen(self._last_seen_epoch)
+        self.state.uptime_str = self._format_uptime(time.time() - self._start_time)
         if self.state.estop: self.state.system_status = "E-Stop Active ↗"
         elif self.state.fault: self.state.system_status = "System Fault ↗"
         else: self.state.system_status = "System Normal ↗"
@@ -366,6 +383,7 @@ class RuntimeState:
                 "dimmed":         s.dimmed,
                 "timestamp_str":  s.timestamp_str,
                 "last_seen_str":  s.last_seen_str,
+                "uptime_str":     s.uptime_str,
                 "system_status":  s.system_status,
                 "metrics":        s.metrics.to_dict(),
                 "console_text":   "\n".join(self.console_lines[-120:]),
