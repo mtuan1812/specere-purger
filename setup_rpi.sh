@@ -85,6 +85,7 @@ EOF
 
 chmod +x "$DESKTOP_FILE"
 sudo chown "$USER_NAME:$USER_NAME" "$DESKTOP_FILE"
+gio set "$DESKTOP_FILE" metadata::trusted true
 
 echo "Setup complete! Rebooting..."
 
