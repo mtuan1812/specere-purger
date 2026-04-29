@@ -8,6 +8,10 @@ REPO_URL="https://github.com/mtuan1812/specere-purger.git"
 REPO_DIR="$GIT_DIR/specere-purger"
 CONFIG_FILE="/boot/firmware/config.txt"
 
+echo "Configuring passwordless sudo for $USER_NAME..."
+echo "$USER_NAME ALL=(ALL) NOPASSWD: ALL" | sudo tee "/etc/sudoers.d/010_${USER_NAME}-nopasswd" > /dev/null
+sudo chmod 0440 "/etc/sudoers.d/010_${USER_NAME}-nopasswd"
+
 echo "Updating system..."
 sudo apt update
 sudo apt upgrade -y

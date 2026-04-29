@@ -40,4 +40,9 @@ Once in, run this one line setup script:
 
     curl -fsSL https://raw.githubusercontent.com/mtuan1812/specere-purger/main/setup_rpi.sh | bash
 
-Run the software with the desktop shortcut. Done!
+Run the software with the desktop shortcut.
+
+### If the system pops up a "Execute File" prompt, click 'Execute'.
+Do this if you dont want to click twice every time:
+- Go to file explorer
+- Edit > Preferences > General > check "Don't ask options on launch executable files" 
