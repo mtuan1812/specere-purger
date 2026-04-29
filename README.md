@@ -25,14 +25,14 @@ Refer to the report if you have any questions
 	- Hostname: set your desired computer name, default: `specere-eeoc`
 	- Username: admin (please dont change this)
 	- Password: refer to the report 
-	- Wi-Fi: use Ethernet so none
+	- Wi-Fi: none (connect later)
 	- Enable SSH with password authentication
 	- Raspberry Pi Connect: unused, so whatever
 - Flash the uSD card
 - Done. 
 
-Plug in the Raspberry Pi and get to the console/terminal. There are 3 ways:
-- via the screen + mouse + keyboard combo
+Fire up the RPi. Connect it to Wi-Fi/Ethernet (using a phone as a personal hotspot recommended). Get to the console/terminal. There are 3 ways:
+- via the touchscreen UI
 - via SSH (find the IP address of the pi then via windows/mac/linux terminal) then `ssh -o StrictHostKeyChecking=no admin@<IP>`
 - via the UART0 console port on the HAT PCB via a [USB to TTL adapter](https://www.amazon.com/HiLetgo-CP2102-Converter-Adapter-Downloader/dp/B00LODGRV8) with PuTTY or similar software. Remember to swap RX and TX
 
