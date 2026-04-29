@@ -78,9 +78,9 @@ DESKTOP_FILE="$HOME_DIR/Desktop/startup.desktop"
 cat > "$DESKTOP_FILE" <<'EOF'
 [Desktop Entry]
 Name=HMI Start
-Exec=lxterminal -e bash -c 'sudo /home/admin/Git/specere-purger/HMI/start_hmi.sh && exit; echo -n "FAILED — press any key to close..."; read -n 1 -s'
+Exec=bash -c 'sudo /home/admin/Git/specere-purger/HMI/start_hmi.sh || { echo -n "FAILED — press any key to close..."; read -n 1 -s; }'
 Icon=utilities-system-monitor
-Terminal=false
+Terminal=true
 Type=Application
 EOF
 
