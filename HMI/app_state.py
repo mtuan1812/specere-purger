@@ -334,7 +334,7 @@ class RuntimeState:
                     elif valve == "dio1": self.state.valves.dio1 = not self.state.valves.dio1
                     elif valve == "dio2": self.state.valves.dio2 = not self.state.valves.dio2
                     elif valve == "dio3": self.state.valves.dio3 = not self.state.valves.dio3
-            elif action == "toggle_estop":
+            elif action == "close_app":
                 # Force standby and close all valves before shutdown
                 self.state.mode = "standby"
                 self.state.valves.all_off()
@@ -344,6 +344,14 @@ class RuntimeState:
                 self.log("Executing system shutdown script...")
                 import subprocess
                 subprocess.Popen(["sudo", "sh", os.path.join(BASE_DIR, "stop_hmi.sh")], start_new_session=True)
+            elif action == "shutdown_system":
+                self.state.mode = "standby"
+                self.state.valves.all_off()
+                self.state.estop = True
+                self._apply_fault_logic(self._lox_fault_messages + self._i2c_fault_messages)
+                self.log("Shutting down Raspberry Pi...")
+                import subprocess
+                subprocess.Popen(["sudo", "shutdown", "now"])
             elif action == "reboot_system":
                 self.log("Rebooting Raspberry Pi...")
                 import subprocess
@@ -357,8 +365,6 @@ class RuntimeState:
                     time.sleep(0.5)
                     subprocess.Popen([os.path.join(BASE_DIR, "screen_manager.sh"), "dim"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 threading.Thread(target=dim_display, daemon=True).start()
-            elif action == "toggle_lock":
-                self.state.locked_controls = not self.state.locked_controls
             self._refresh_status_strings()
             self.state.console_text = "\n".join(self.console_lines[-120:])
 

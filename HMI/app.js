@@ -203,7 +203,6 @@ async function refreshState() {
     
     $("setValue").textContent = fmt(data.target_o2, 1);
     $("btnEstop").classList.toggle("estop", data.estop);
-    $("btnLock").classList.toggle("locked", data.locked_controls);
     $("btnDim").classList.toggle("dim", data.dimmed);
     
     const hist = (data.history || []).filter(d => d.ts >= (Date.now() / 1000 - state.rangeSec));
@@ -292,10 +291,10 @@ async function init() {
     $("consoleModal").onclick = e => { if (e.target === $("consoleModal")) closeConsole(); };
     $("qrModal").onclick = e => { if (e.target === $("qrModal")) closeQr(); };
     
-    $("btnEstop").onclick = () => { if (confirm("Quit program?")) post("toggle_estop").then(refreshState); };
+    $("btnEstop").onclick = () => { if (confirm("Shutdown Raspberry Pi?")) post("shutdown_system").then(refreshState); };
     $("btnReset").onclick = () => { if (confirm("Reboot Raspberry Pi?")) post("reboot_system").then(refreshState); };
     $("btnDim").onclick = () => post("toggle_dim").then(refreshState);
-    $("btnLock").onclick = () => post("toggle_lock").then(refreshState);
+    $("btnCloseApp").onclick = () => { if (confirm("Close application?")) post("close_app").then(refreshState); };
     
     await refreshState();
     // Self-rescheduling loop: next poll fires 250ms *after* the previous response
