@@ -40,7 +40,7 @@ The system monitors environmental conditions and controls gas flow to achieve an
    - **Raspberry Pi Connect:** Optional/Unused.
 
 ### 2. Software Installation
-Once booted and connected to the internet, run the automated setup script:
+Once booted, connect the RPi to a network (ethernet/wi-fi), then run the automated setup script:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mtuan1812/specere-purger/main/setup_rpi.sh | bash
 ```
