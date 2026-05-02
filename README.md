@@ -1,48 +1,62 @@
-﻿# specere-purger
-Welcome to Specere Lab's OptiFlex chamber code repository!
+# Specere Purger (OptiFlex Chamber)
 
-what are we doing? attempting to communicate from a raspberry pi to:
+Control and monitoring system for the Specere Lab OptiFlex chamber, running on Raspberry Pi.
 
- - Airflow Meter (I2C): [SFM4300-20-P](https://sensirion.com/media/documents/024CBAA1/62987ADF/Sensirion_Datasheet_SFM4300.pdf) 
- - Temp Sensor (I2C): [SHT45](https://cdn-shop.adafruit.com/product-files/6174/6174_Datasheet_SHT4x.pdf)
- - Oxygen Sensor (UART3): [LOX-02](https://sstsensing.com/product/luminox-oxygen-sensor/)
- - (TBD) Pressure sensor: Honeywell HSC series (no longer needed right now due to low pressure, but PCB footprint is still there)
+## Project Overview
+The system monitors environmental conditions and controls gas flow to achieve and maintain a purged state (≤1% $O_2$) within the chamber.
 
-what are we controlling? 2 valves: Purge flow valve and steady flow valve. 
+### Core Objectives
+- Achieve $O_2$ levels of 1% or less in the purged chamber.
+- Automate dual-valve control (Purge flow and Steady flow).
+- Provide real-time telemetry via a local HMI.
 
-what are our goals? make the o2 sensor reads 1% or less in the purged chamber. 
+## Hardware Specifications
 
-Refer to the report if you have any questions
+### Sensors
+- **Airflow Meter (I2C):** [Sensirion SFM4300-20-P](https://sensirion.com/media/documents/024CBAA1/62987ADF/Sensirion_Datasheet_SFM4300.pdf)
+- **Temp/Humidity (I2C):** [Sensirion SHT45](https://cdn-shop.adafruit.com/product-files/6174/6174_Datasheet_SHT4x.pdf)
+- **Oxygen Sensor (UART3):** [SST Sensing LOX-02](https://sstsensing.com/product/luminox-oxygen-sensor/)
+- **Pressure (Optional):** Honeywell HSC series (Footprint available, currently unused due to low pressure).
 
-## Setup
+### Actuators
+- **Purge Flow Valve:** GPIO-controlled solenoid.
+- **Steady Flow Valve:** GPIO-controlled solenoid.
 
- - Plug empty microSD card into a PC 
- - Download latest version of
-   [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
- - Flash the SD card with the following settings:
-	 - Board: Raspberry Pi 4
-	 - OS: Raspberry Pi OS (64 bit)
-	- Hostname: set your desired computer name, default: `specere-eeoc`
-	- Username: admin (please dont change this)
-	- Password: refer to the report 
-	- Wi-Fi: none (connect later)
-	- Enable SSH with password authentication
-	- Raspberry Pi Connect: unused, so whatever
-- Flash the uSD card
-- Done. 
+---
 
-Fire up the RPi. Connect it to Wi-Fi/Ethernet (using a phone as a personal hotspot recommended). Get to the console/terminal. There are 3 ways:
-- via the touchscreen UI
-- via SSH (find the IP address of the pi then via windows/mac/linux terminal) then `ssh -o StrictHostKeyChecking=no admin@<IP>`
-- via the UART0 console port on the HAT PCB via a [USB to TTL adapter](https://www.amazon.com/HiLetgo-CP2102-Converter-Adapter-Downloader/dp/B00LODGRV8) with PuTTY or similar software. Remember to swap RX and TX
+## Installation & Setup
 
-Once in, run this one line setup script:
+### 1. OS Preparation
+1. Use [Raspberry Pi Imager](https://www.raspberrypi.com/software/) to flash a microSD card.
+2. **Settings:**
+   - **Board:** Raspberry Pi 4
+   - **OS:** Raspberry Pi OS (64-bit)
+   - **Hostname:** `specere-eeoc` (Recommended default)
+   - **Username:** `admin` (Required for automated scripts)
+   - **Password:** [Refer to Project Report]
+   - **Wi-Fi:** None (Configure after first boot)
+3. **Services:** 
+   - Enable **SSH** with password authentication.
+   - **Raspberry Pi Connect:** Optional/Unused.
 
-    curl -fsSL https://raw.githubusercontent.com/mtuan1812/specere-purger/main/setup_rpi.sh | bash
+### 2. Software Installation
+Once booted and connected to the internet, run the automated setup script:
+```bash
+curl -fsSL https://raw.githubusercontent.com/mtuan1812/specere-purger/main/setup_rpi.sh | bash
+```
 
-Run the software with the desktop shortcut.
+## Operation
 
-### If the system pops up a "Execute File" prompt, click 'Execute'.
-Do this if you dont want to click twice every time:
-- Go to file explorer
-- Edit > Preferences > General > check "Don't ask options on launch executable files" 
+### Running the Application
+- **HMI:** Use the desktop shortcut created by the setup script.
+- **Auto-Execute:** If prompted to "Execute File", click **Execute**. 
+  - *Tip: To skip this prompt in the future, go to File Explorer > Edit > Preferences > General and check "Don't ask options on launch executable files".*
+
+### Troubleshooting & Console Access
+Access the RPi terminal via:
+1. **Direct Touchscreen:** Open the terminal emulator.
+2. **SSH:** `ssh -o StrictHostKeyChecking=no admin@<IP_ADDRESS>`
+3. **Serial Console:** Use the UART0 port on the HAT PCB via a USB-to-TTL adapter (115200 baud). Remember to swap RX/TX.
+
+---
+*For detailed engineering logic and safety protocols, refer to the full Project Report.*

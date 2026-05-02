@@ -1,6 +1,24 @@
 #!/bin/bash
 set -e
 
+# --- Hardware Guard ---
+# This script configures GPIO, dtoverlays, and hardware-PWM specific to Raspberry Pi 4.
+# Abort early if the detected hardware is not an RPi 4.
+MODEL_FILE="/proc/device-tree/model"
+if [ ! -f "$MODEL_FILE" ]; then
+    echo "ERROR: Cannot detect hardware model ($MODEL_FILE not found)."
+    echo "This script must be run on a Raspberry Pi 4."
+    exit 1
+fi
+MODEL=$(tr -d '\0' < "$MODEL_FILE")
+if [[ "$MODEL" != *"Raspberry Pi 4"* ]]; then
+    echo "ERROR: Unsupported hardware detected: $MODEL"
+    echo "This script is designed for Raspberry Pi 4 only."
+    exit 1
+fi
+echo "Hardware check passed: $MODEL"
+# ---------------------
+
 USER_NAME="admin"
 HOME_DIR="/home/$USER_NAME"
 GIT_DIR="$HOME_DIR/Git"
