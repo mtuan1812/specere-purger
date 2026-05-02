@@ -381,6 +381,7 @@ class RuntimeState:
                 "mode":           s.mode,
                 "target_o2":      s.target_o2,
                 "valves":         s.valves.to_dict(),
+                "gpio_ok":        self.gpio.is_active,
                 "estop":          s.estop,
                 "fault":          s.fault,
                 "fault_message":  s.fault_message,

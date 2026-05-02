@@ -41,9 +41,10 @@ function applyStatusBar(fault, estop, ts, text, uptime) {
     if ($("uptimeText")) $("uptimeText").textContent = `Uptime: ${uptime || "--"}`;
 }
 
-function updateDio(v, estop) {
-    // Only turn red on GPIO-related faults (hardware E-stop), not sensor faults
-    const getClass = (isOn) => estop ? "dio fault" : (isOn ? "dio on" : "dio");
+function updateDio(v, estop, gpioOk) {
+    // Red when E-stop is active OR when GPIO failed to initialise
+    const isFault = estop || !gpioOk;
+    const getClass = (isOn) => isFault ? "dio fault" : (isOn ? "dio on" : "dio");
     $("dio0").className = getClass(v.dio0);
     $("dio1").className = getClass(v.dio1);
     $("dio2").className = getClass(v.dio2);
@@ -189,7 +190,7 @@ async function refreshState() {
     applyPathUI(data.valves);
     applyStartStop(data.mode === "auto");
     updateReadings(data.metrics);
-    updateDio(data.valves, data.estop);
+    updateDio(data.valves, data.estop, data.gpio_ok);
     applyStatusBar(data.fault, data.estop, data.timestamp_str, data.system_status, data.uptime_str);
     
     let staleness = data.staleness_sec;
