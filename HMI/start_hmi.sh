@@ -3,6 +3,22 @@
 # Navigate to the directory where the script is located
 cd "$(dirname "$0")"
 
+# --- Debounce / Single-instance Guard ---
+LOCK_FILE="/tmp/hmi.lock"
+if [ -f "$LOCK_FILE" ]; then
+    EXISTING_PID=$(cat "$LOCK_FILE")
+    if kill -0 "$EXISTING_PID" 2>/dev/null; then
+        echo "HMI is already running (PID $EXISTING_PID). Ignoring duplicate launch."
+        exit 0
+    else
+        echo "Stale lock file found (PID $EXISTING_PID no longer alive). Removing..."
+        rm -f "$LOCK_FILE"
+    fi
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+# ----------------------------------------
+
 echo "Running pre-flight dependency checks..."
 
 # 1. Check for gpiozero
